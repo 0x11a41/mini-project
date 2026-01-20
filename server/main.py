@@ -4,6 +4,11 @@ from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+async def read_root():
+    return FileResponse("static/index.html")
+
 clients = []
 
 @app.websocket("/ws/control")
@@ -21,12 +26,3 @@ async def handle_control_commands(ws: WebSocket):
 
     except WebSocketDisconnect:
         clients.remove(ws)
-
-
-@app.get("/")
-async def read_root():
-    return FileResponse("static/index.html")
-
-@app.get("/greet/{name}")
-def greet(name: str):
-    return { "msg": f'hello {name}, how are you?'}
