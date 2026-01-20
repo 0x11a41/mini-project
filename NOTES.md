@@ -117,16 +117,8 @@ From these popular options, we ought to use FastAPI. **WHY ?**
 **It seems understandable just by stare-ing at example codes.**  
 
 
-```handdrawn-ink
-{
-	"versionAtEmbed": "0.3.4",
-	"filepath": "Ink/Drawing/2026.1.17 - 3.52am.drawing",
-	"width": 820,
-	"aspectRatio": 1.8303571428571428
-}
-```
-
 ---
+
 ## Backend project structure
 ```
 server/
