@@ -1,11 +1,13 @@
 # Idea
 A voice recorder application that can (optionally) use a client server architecture. The recorder application stays on smartphone devices. The application behaves like a regular voice recorder in the absence of a server in the local network. It can do noise-cancelled voice recording. This is the base application that the client runs. If the client detect a server application on the local network, the story changes. Now the server can control the recording as well as retrieve the recorded audio from client. A server can handle multiple client programs simultaneously (imagine a podcast scenario or an interview). The server can now further do speech enhancement using resource heavy deep learning algorithms (or something else that significantly improves the speech quality).
 
-#### Server Dashboard UI
+# Mockup UI designs
+#### Server Dashboard
 ![dashboard](mockups/dashboard.png)
 
 #### Client's Server Selection Page
 ![client](mockups/client's-server-selection-view.png)
+
 # 1. mDNS for server discovery
 clients do not know server's IP address, host name or port number. mDNS is a network advertisement service for local network that multicasts the IP address, host name and port number onto the devices connected to local network periodically. Clients listening on the same multicast channel can discover information that is being brodcasted. 'm' in 'mDNS' stands for multicast.
 ```
