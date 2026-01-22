@@ -8,7 +8,8 @@ A voice recorder application that can (optionally) use a client server architect
 #### Client's Server Selection Page
 ![client](mockups/client's-server-selection-view.png)
 
-# [Base android client application](https://github.com/0x11a41/fossify-voice-recorder#)
+
+- [link to android client side application](https://github.com/0x11a41/fossify-voice-recorder#)
 
 # 1. mDNS for server discovery
 clients do not know server's IP address, host name or port number. mDNS is a network advertisement service for local network that multicasts the IP address, host name and port number onto the devices connected to local network periodically. Clients listening on the same multicast channel can discover information that is being brodcasted. 'm' in 'mDNS' stands for multicast.
