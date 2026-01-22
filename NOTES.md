@@ -1,8 +1,3 @@
-## Table of Contents
-1. [mDNS for Server Discovery](#1.-mDNS-for-server-discovery)
-2. [REST API and WebSockets for Communication](#2.-REST-API-and-WebSockets-for-communication)
-3. [API Route Design](#3.-API-Route-Design)
----
 # 1. mDNS for server discovery
 clients do not know server's IP address, host name or port number. mDNS is a network advertisement service for local network that multicasts the IP address, host name and port number onto the devices connected to local network periodically. Clients listening on the same multicast channel can discover information that is being brodcasted. 'm' in 'mDNS' stands for multicast.
 ```
