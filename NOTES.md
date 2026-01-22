@@ -1,3 +1,8 @@
+#### Server Dashboard UI
+![dashboard](mockups/dashboard.png)
+
+#### Client's Server Selection Page
+![client](mockups/client's-server-selection-view.png)
 # 1. mDNS for server discovery
 clients do not know server's IP address, host name or port number. mDNS is a network advertisement service for local network that multicasts the IP address, host name and port number onto the devices connected to local network periodically. Clients listening on the same multicast channel can discover information that is being brodcasted. 'm' in 'mDNS' stands for multicast.
 ```
