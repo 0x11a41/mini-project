@@ -1,18 +1,37 @@
-# Idea
+### Table of contents
+
+1. [Project Proposal](NOTES.md#Project-Proposal)
+
+2. [UI Mockups](NOTES.md/#UI-Mockups)
+
+3. [Anticipated Communication Architecture](NOTES.md#Anticipated-communication-architecture)
+
+4. [Communication Endpoints](NOTES.md#Communication-Endpoints)
+
+# Project Proposal
+
 A voice recorder application that can (optionally) use a client server architecture. The recorder application stays on smartphone devices. The application behaves like a regular voice recorder in the absence of a server in the local network. It can do noise-cancelled voice recording. This is the base application that the client runs. If the client detect a server application on the local network, the story changes. Now the server can control the recording as well as retrieve the recorded audio from client. A server can handle multiple client programs simultaneously (imagine a podcast scenario or an interview). The server can now further do speech enhancement using resource heavy deep learning algorithms (or something else that significantly improves the speech quality).
 
-# Mockup UI designs
+# UI Mockups
+
 #### Server Dashboard
+
 ![dashboard](mockups/dashboard.png)
 
 #### Client's Server Selection Page
+
 ![client](mockups/client's-server-selection-view.png)
 
 
-- [link to android client side application](https://github.com/0x11a41/fossify-voice-recorder#)
 
-# 1. mDNS for server discovery
+>  [link to choosen client side application](https://github.com/0x11a41/fossify-voice-recorder#)
+
+# Anticipated communication architecture
+
+## 1. mDNS for server discovery
+
 clients do not know server's IP address, host name or port number. mDNS is a network advertisement service for local network that multicasts the IP address, host name and port number onto the devices connected to local network periodically. Clients listening on the same multicast channel can discover information that is being brodcasted. 'm' in 'mDNS' stands for multicast.
+
 ```
 Server
    |
@@ -25,10 +44,12 @@ Server
    |            |           |
  Client A    Client B    Client C
 ```
+
 After discovery about the server info on client side, websockets and REST api's are used to establish connection and carrying client-server communication.
 This can be achieved in python using **zeroconf** library.
 
 in this example, we attach a custom server name along with the broadcast message
+
 ```python
 from zeroconf import Zeroconf, ServiceInfo
 import socket
@@ -63,10 +84,10 @@ input("Press Enter to stop...")
 
 zeroconf.unregister_service(info)
 zeroconf.close()
-
 ```
 
 since we support changing server name from the frontend, we need to dynamically update server name. for that, we have to do unregister and re-register nDNS server with the new name. the snippet shown below demonstrates it
+
 ```python
 zeroconf.unregister_service(info)
 info = ServiceInfo(...new name...)
@@ -74,6 +95,7 @@ zeroconf.register_service(info)
 ```
 
 mDNS should be ran as a background task inside the VocalLink server like the following
+
 ```python
 from fastapi import FastAPI
 import threading
@@ -90,48 +112,54 @@ def startup_event():
 ```
 
 ---
-# 2. REST API and WebSockets for communication
+
+## 2. REST API and WebSockets for communication
+
 After the client discovers server information, it can now use the server's ip address and port number to communicate to that server using predefined **routes**.
 A route is a path within our server that essentially leads to a function call. For example, we can define `http://localhost:8000/ping` where **`/ping`** is a route that calls a function that lies on the server to check whether server is alive or not.
 
-## What's REST API ?
-A REST API (Representational State Transfer Application Programming Interface) is a set of rules for building web services that allow different applications to communicate over the internet using standard HTTP methods like GET, POST, PUT, and DELETE.
-[read about REST API methods](https://restfulapi.net/http-methods/)
-### Why do we need it?
-everything we will be doing apart from control commands (ie, START_RECORD, STOP_RECORD) will be using REST API methods. 
+**What's REST API ?** It is basically a cool name for http methods - GET, POST, PUT, DELETE ... [read more](https://restfulapi.net/http-methods/)
+
+**Why do we need it ?** everything we will be doing apart from control commands (ie, START_RECORD, STOP_RECORD) will be using REST API methods. 
 
 ---
+
 ## What purpose does WebSockets serve in our project?
+
 WebSockets is a communication protocol that enables **two-way** (full-duplex), **real-time** interaction between a client  and a server over a single, persistent connection.
 We will be using this technology to enable real time control command transfer and updation. The dataflow will be like the following
 
 1. The user clicks on "Start Recording" button
 2. the frontend sends a message to backend via websockets to tell the client to start recording.
-```json
-{
-  "action": "START_RECORDING"
-}
-```
+   
+   ```json
+   {
+   "action": "START_RECORDING"
+   }
+   ```
 3. The backend broadcast this message to all or specific client(s)
 4. each client will recieve this message
 5. the server should acknowledge the request back to server.
 
 We will be using **python** to develop the server backend. Python offers sever libraries to interfere with REST APIs.
+
 - Flask
 - Django REST Framework
 - FastAPI
-From these popular options, we ought to use FastAPI. **WHY ?**
-> below are some good points that I stole from gemini
+  From these popular options, we ought to use FastAPI. **WHY ?**
+  
+  > below are some good points that I stole from gemini
 - FastAPI is one of the fastest Python frameworks available. It is built on **Starlette** (for web parts) and **Uvicorn** (the server), allowing it to handle thousands of concurrent requests.
 - The moment you write a route, FastAPI generates a professional, interactive documentation page.
 - FastAPI uses **Python Type Hints** and a library called **Pydantic** to validate data.
 - In **FastAPI**, WebSockets are a "first-class citizen." They work out of the box with the same simple syntax as your REST routes.
 
 **It seems understandable just by stare-ing at example codes.**  
- - [Examples](https://github.com/0x11a41/mini-project/tree/main/server)
 
+>  [A layman implementation of the client-server architecture we discussed](https://github.com/0x11a41/mini-project/tree/main/server)
 
-# 3. API Route Design
+# Communication Endpoints
+
 ### 1. Client (Mobile App) → Server Routes
 
 | Trigger (UI / Event) | Route                     | Method | Purpose                     | Payload (Summary)            |
@@ -176,7 +204,6 @@ From these popular options, we ought to use FastAPI. **WHY ?**
 
 ### 5. Discovery (Non-HTTP)
 
-|Mechanism|Purpose|
-|---|---|
-|mDNS / UDP broadcast|Discover available VocalLink servers|
-
+| Mechanism            | Purpose                              |
+| -------------------- | ------------------------------------ |
+| mDNS / UDP broadcast | Discover available VocalLink servers |
