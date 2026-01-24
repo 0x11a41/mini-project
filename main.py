@@ -48,12 +48,36 @@ async def handle_control_commands(ws: WebSocket):
     clients.append(ws)
     try:
         while True:
-            data = await ws.receive_text()
-            print(f"Received: {data}")
+            data = await ws.receive_json()
+            print(f"websocket: {data}")
             for client in clients:
-                await client.send_text(data)
+                if client != ws:
+                    await client.send_json(data)
     except WebSocketDisconnect:
-        clients.remove(ws)
+        if ws in clients:
+            clients.remove(ws)
+
+
+@app.websocket("/ws/server-rename")
+async def update_server_name(ws: WebSocket):
+    await ws.accept()
+    try:
+        while True:
+            data = await ws.receive_json() # recieve as dictionary
+            print(f"websocket: {data}")
+            if data.get("action") == "RENAME_SERVER":
+                new_name = data.get("newName")
+                await app.state.aiozc.async_unregister_service(app.state.current_info)
+                app.state.server_name = new_name
+                app.state.current_info = create_service_info(app, new_name)
+                await app.state.aiozc.async_register_service(app.state.current_info)
+                for client in clients:
+                    if client != ws:
+                        await client.send_json(data)
+    except WebSocketDisconnect:
+        if ws in clients:
+            clients.remove(ws)
+                    
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
@@ -64,12 +88,3 @@ async def read_root():
 async def ping():
     return { "status": "alive" }
 
-@app.post("/update-name")
-async def update_server_name(new_name: str = Body(..., embed=True)):
-    await app.state.aiozc.async_unregister_service(app.state.current_info)
-    
-    app.state.server_name = new_name
-    app.state.current_info = create_service_info(app, new_name)
-    
-    await app.state.aiozc.async_register_service(app.state.current_info)
-    return {"status": "updated", "new_name": new_name}

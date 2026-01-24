@@ -145,6 +145,8 @@ We will be deploying our **backend in python**, due for the following **reasons*
 | Start all / mic button | `/ws/control` | `START_RECORDING` | Begin recording        |
 | Stop button            | `/ws/control` | `STOP_RECORDING`  | Stop recording         |
 | Client event           | `/ws/control` | `STATE_UPDATE`    | Update dashboard state |
+| Server name change     | `/ws/server-rename` | `SERVER_RENAME`   | Rename server    |
+| Rename client     | `/ws/client-rename` | `CLIENT_RENAME`   | Rename client    |
 
 ### 3. Server Dashboard – Device Control Routes
 
