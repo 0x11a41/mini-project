@@ -9,12 +9,10 @@ pkgs.mkShell {
     python3Packages.zeroconf
     python3Packages.python-lsp-server
     ty
-    ruff
     vscode-css-languageserver
     superhtml
     vscode-json-languageserver
     typescript-language-server
-    live-server
   ];
   shellHook = ''
   echo "entered dev-shell: $(python --version)"
