@@ -1,5 +1,4 @@
 uvicorn
 fastapi
 websockets
-zeroconf
 livereload

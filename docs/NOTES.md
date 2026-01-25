@@ -47,26 +47,31 @@ Our project makes professional audio recording easy and affordable by using the 
 
 >  [link to choosen client side application](https://github.com/0x11a41/fossify-voice-recorder#)
 
+---
+
 # Anticipated communication architecture
 
-## mDNS for server discovery
+## server discovery
 
-clients do not know server's IP address, host name or port number. mDNS is a network advertisement service for local network that multicasts the IP address, host name and port number onto the devices connected to local network periodically. Clients listening on the same multicast channel can discover information that is being brodcasted. 'm' in 'mDNS' stands for multicast.
+### Option 1: Subnet Scanning
 
-```
-Server
-   |
-   | mDNS broadcast
-   v
----------------------------------
-|  Local network (WiFi)         |
----------------------------------
-   ^            ^           ^
-   |            |           |
- Client A    Client B    Client C
-```
+**How it works:**
 
-Python's **zeroconf** library enables us to use mDNS inside our server. After client's discovery about server's IP address and PORT number, REST API's and WebSockets will tell rest of the story. 
+1. The Recorder (client) identifies its own IP (e.g., `192.168.1.15`).
+
+2. It loops through every IP on that subnet (`192.168.1.1` to `192.168.1.255`).
+
+3. It sends a "ping" (a quick HTTP GET) to `http://[IP]:6210/ping`.
+
+4. The IP's that responds "alive" is identified as the Controllers.
+
+use `asyncio` to ping all 255 addresses simultaneously. It usually takes less than 2 seconds to find the controller.
+
+### Option 2: using QR code
+
+server displays a qr code containing info about ip address, port number and server's name.
+
+---
 
 ## REST API and WebSockets for communication
 
@@ -76,8 +81,6 @@ A route is a path within our server that essentially leads to a function call. F
 **What's REST API ?** It is basically a cool name for http methods - GET, POST, PUT, DELETE ... [read more](https://restfulapi.net/http-methods/)
 
 **Why do we need it ?** everything we will be doing apart from control commands (ie, START_RECORD, STOP_RECORD) will be using REST API methods. 
-
----
 
 ## What purpose does WebSockets serve in our project?
 
@@ -99,6 +102,10 @@ We will be using this technology to enable real time control command transfer an
 4. each client will recieve this message
 
 5. the client should acknowledge the request back to server.
+   
+   
+   
+   ---
 
 ## Backend
 
@@ -110,10 +117,11 @@ We will be deploying our **backend in python**, due for the following **reasons*
 
 | Technology    | Python Library we plan on use |
 | ------------- | ----------------------------- |
-| mDNS          | zeroconf                      |
 | WebSockets    | FastAPI                       |
 | routing       | FastAPI                       |
 | ML processing | librosa/PyTorch               |
+
+---
 
 # Communication Endpoints
 

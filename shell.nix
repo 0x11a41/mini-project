@@ -6,7 +6,6 @@ pkgs.mkShell {
     python3Packages.uvicorn
     python3Packages.fastapi
     python3Packages.websockets
-    python3Packages.zeroconf
     python3Packages.livereload
     ty # A python lsp
     vscode-css-languageserver
