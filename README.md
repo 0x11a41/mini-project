@@ -6,8 +6,8 @@
 **Prerequesites:** python, pip and git should be installed.
 
 ```bash
-git clone https://github.com/0x11a41/vocal-link 
-cd vocal-link
+git clone https://github.com/0x11a41/vocal-link-dashboard
+cd vocal-link-dashboard
 
 python -m venv venv
 source venv/bin/active
