@@ -1,6 +1,4 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from zeroconf import ServiceInfo
 from contextlib import asynccontextmanager
 from zeroconf.asyncio import AsyncZeroconf
@@ -38,6 +36,8 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
     await app.state.aiozc.async_unregister_service(app.state.current_info)
     await app.state.aiozc.async_close()
+
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -79,12 +79,6 @@ async def update_server_name(ws: WebSocket):
             clients.remove(ws)
                     
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-@app.get("/")
-async def read_root():
-    return FileResponse("static/index.html")
-
 @app.get("/ping")
 async def ping():
     return { "status": "alive" }
-

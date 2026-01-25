@@ -14,6 +14,7 @@ pkgs.mkShell {
     vscode-json-languageserver
     typescript-language-server
     websocat # to test websocket endpoints 
+    live-server
   ];
   shellHook = ''
   echo "entered dev-shell: $(python --version)"

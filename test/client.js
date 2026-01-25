@@ -9,11 +9,9 @@ ws.onopen = () => setState("connected to server");
 ws.onmessage = (event) => {
   let msg = JSON.parse(event.data);
 
-  if (msg.action === "START_RECORDING") {
+  if (msg.action === "START_RECORDING_ALL") {
     setState("Recording...")
-  } else if (msg.action === "STOP_RECORDING") {
+  } else if (msg.action === "STOP_RECORDING_ALL") {
     setState("Recording stopped")
   }
 }
-
-
