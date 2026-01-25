@@ -20,6 +20,3 @@ pip install -r requirements.txt
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 6210
 ```
-
-### opening dashboard
-open `frontend/index.html` inside a web browser
