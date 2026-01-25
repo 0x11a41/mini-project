@@ -11,7 +11,7 @@ async def handle_control_commands(ws: WebSocket):
     try:
         while True:
             data = await ws.receive_json()
-            print(f"websocket: {data}")
+            print(f"/ws/control => {data}")
             for client in clients:
                 if client != ws:
                     await client.send_json(data)
@@ -22,4 +22,4 @@ async def handle_control_commands(ws: WebSocket):
 
 @app.get("/ping")
 async def ping():
-    return { "status": "alive" }
+    return { "_VOCAL_LINK_SERVER_": "running" }

@@ -7,6 +7,7 @@ pkgs.mkShell {
     python3Packages.fastapi
     python3Packages.websockets
     python3Packages.livereload
+    python3Packages.httpx
     ty # A python lsp
     vscode-css-languageserver
     superhtml
