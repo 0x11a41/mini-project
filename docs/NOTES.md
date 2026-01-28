@@ -1,9 +1,11 @@
 ### Table of Contents
 
 1. [Project Proposal](#project-proposal)
-2. [UI Mockups](#ui-mockups)
-3. [Anticipated Communication Architecture](#anticipated-communication-architecture)
+2. [Anticipated Communication Architecture](#anticipated-communication-architecture)
+3. [UI Mockups](#ui-mockups)
 4. [Endpoints](#Endpoints)
+5. [Problems to be identified](#Problems-to-be-identified)
+6. [Resources](#Resources)
 
 # Project Proposal
 
@@ -34,20 +36,8 @@ Our project makes professional audio recording easy and affordable by using the 
 - **Low-Budget Studios:** Act as a "poor man's recording studio"
 
 - ~~***On-the-Go Recording:** Record anywhere and automatically enhance files when reconnecting to the server.*~~
-
-# UI Mockups
-
-#### Server Dashboard
-
-![dashboard](mockups/dashboard.png)
-
-#### Client's Server Selection Page
-
-![client](mockups/client's-server-selection-view.png)
-
->  [link to choosen client side application](https://github.com/0x11a41/fossify-voice-recorder#)
-
----
+  
+  ---
 
 # Anticipated communication architecture
 
@@ -79,7 +69,7 @@ Option 1 is not garunteed to find the server since some routers interpret the br
 
 > NOTE: option one appeared more reliable than mDNS; when tested. 
 
----
+
 
 ## REST API and WebSockets for communication
 
@@ -110,8 +100,6 @@ We will be using this technology to enable real time control command transfer an
 4. each client will recieve this message
 
 5. the client should acknowledge the request back to server.
-   
-   ---
 
 ## Backend
 
@@ -126,6 +114,16 @@ We will be deploying our **backend in python**, due for the following **reasons*
 | WebSockets    | FastAPI                       |
 | routing       | FastAPI                       |
 | ML processing | librosa/PyTorch               |
+
+---
+
+# UI Mockups
+
+#### Server Dashboard
+
+#### Client's Server Selection Page
+
+> [link to choosen client side application](https://github.com/0x11a41/fossify-voice-recorder#)
 
 ---
 
@@ -234,6 +232,7 @@ Optional body:
 All commands go through this endpoint.
 
 **Message Format :**
+
 ```json
 // status
 {
@@ -294,3 +293,34 @@ All commands go through this endpoint.
 | Export     | Merge recordings      | `/export/merge`             | POST   | Merge all session recordings into one file     |
 | Export     | Download merged file  | `/export/latest`            | GET    | Download most recent merged output             |
 | WebSocket  | Real-time control     | `/ws/control`               | WS     | Bidirectional channel for commands and updates |
+
+---
+
+# Problems to be identified
+
+1. **Clock synchronization:** If the server sends a "START" command via WebSocket, Client A might receive it 10ms later, and Client B might receive it 150ms later due to network jitter. When you merge the files, the speakers will be out of sync, creating an echo or "phasing" effect. We need a mechanism to sync clocks (like a simplified NTP) or include a **timestamp** in the metadata of the audio file that records exactly when the "Record" button was triggered in Unix time (milliseconds).
+
+2. **Android development:** This is the unknown territory we will be facing. A lot of LLM generated code will be required.
+
+3. **Speech enhancement:** using ML and DSP-absed processing pipelines
+
+4. **Failures and recovery:** Recovering disconnected recording sessions.
+
+5. **Enhancement processing states:** The `/enhance` endpoint shouldn't just be a POST that hangs. We might need a "status" field in your recording metadata: `[Original, Processing, Enhanced, Failed]`
+
+---
+
+# Resources
+
+- [REST API Introduction - GeeksforGeeks](https://www.geeksforgeeks.org/node-js/rest-api-introduction/)
+
+- [WebSockets - medium.com](https://medium.com/@omargoher/websocket-explained-what-it-is-and-how-it-works-b9eafefe28d7)
+
+- [WebSockets](https://javascript.plainenglish.io/websocket-an-in-depth-beginners-guide-96f617c4c7a5)
+
+#### Research papers
+
+- [Autodirective Audio Capturing Through a
+  Synchronized Smartphone Array](https://xyzhang.ucsd.edu/papers/Sur_Wei_MobiSys14_Dia.pdf) - Similar to our project, contains info about clock synchronization problem.
+
+---
