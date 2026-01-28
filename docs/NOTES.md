@@ -171,19 +171,6 @@ Example:
 }
 ```
 
-#### 3. Client Status / Heartbeat
-
-| Purpose      | Endpoint              | Method |
-| ------------ | --------------------- | ------ |
-| Update state | `/clients/{id}/state` | PUT    |
-
-```json
-// PUT /clients/42/state
-{
-  "recording": true,
-}
-```
-
 #### 4. Upload After Recording
 
 | Purpose      | Endpoint      | Method |
@@ -247,6 +234,13 @@ Optional body:
 All commands go through this endpoint.
 
 **Message Format :**
+```json
+// status
+{
+  "active": true, 
+  "recording": true,
+}
+```
 
 ```json
 // record all
@@ -288,11 +282,6 @@ All commands go through this endpoint.
 | Client     | Get client details    | `/clients/{id}`             | GET    | Fetch specific client information              |
 | Client     | Update client         | `/clients/{id}`             | PATCH  | Rename or update client metadata               |
 | Client     | Remove client         | `/clients/{id}`             | DELETE | Disconnect and remove client                   |
-| Client     | Update client state   | `/clients/{id}/state`       | PUT    | Update recording status, battery, device state |
-| Client     | Start recording       | `/clients/{id}/recording`   | POST   | Start recording on a specific client           |
-| Client     | Stop recording        | `/clients/{id}/recording`   | DELETE | Stop recording on a specific client            |
-| Control    | Start all recording   | `/control/recording`        | POST   | Start recording on all connected clients       |
-| Control    | Stop all recording    | `/control/recording`        | DELETE | Stop recording on all connected clients        |
 | Recordings | Upload recording      | `/recordings`               | POST   | Upload recorded audio file                     |
 | Recordings | List recordings       | `/recordings`               | GET    | Retrieve all recordings                        |
 | Recordings | Get recording info    | `/recordings/{id}`          | GET    | Fetch recording metadata                       |
