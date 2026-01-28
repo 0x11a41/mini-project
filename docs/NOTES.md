@@ -3,7 +3,7 @@
 1. [Project Proposal](#project-proposal)
 2. [UI Mockups](#ui-mockups)
 3. [Anticipated Communication Architecture](#anticipated-communication-architecture)
-4. [Communication Endpoints](#communication-endpoints)
+4. [Endpoints](#Endpoints)
 
 # Project Proposal
 
@@ -17,23 +17,23 @@ Our project makes professional audio recording easy and affordable by using the 
 
 ## Target Audience
 
-- **Indie Podcasters:** Individuals who record group sessions and need a way to keep all participants in sync without buying a multi-channel mixer.
+- **Indie Podcasters:** Creators who need synchronized multi-person recordings without costly equipment.
 
-- **Journalists and Field Researchers:** Professionals who conduct interviews on the go and need to "fix" recordings later using the server's AI enhancement.
+- **Journalists & Researchers:** Professionals who record interviews in the field and enhance them ~~later~~ with AI processing.
 
-- **Content Creators & YouTubers:** People making videos who want to use their phone as a high-quality wireless microphone that automatically sends files to their editing station.
+- **Content Creators & YouTubers:** Users who want their phones to act as wireless microphones that send audio directly to their editing setup.
 
-- **Educators:** Teachers recording lectures or student discussions where clear speech is vital for accessibility and transcription.
+- **Educators:** Teachers who need clear recordings for lectures, discussions, and accessibility.
 
 ## Useful Situations
 
-- **Multi-Guest Interviews:** When you have three or four people in a room, you can give each person a smartphone to use as a "mic" and control them all from one laptop dashboard.
+- **Multi-Guest Interviews:** Use multiple phones as microphones, controlled from one central dashboard.
 
-- **Recording in Noisy Places:** If you are forced to record in a cafe or a windy park, the server's deep learning algorithms can strip away the background noise better than a phone ever could.
+- **Noisy Environments:** Remove background noise using server-based deep learning and client's DSP processing.
 
-- **Low-Budget Remote Studios:** It acts as a "poor man's studio," allowing a group of people to create professional-grade multi-track audio without spending thousands on XLR microphones and acoustic foam.
+- **Low-Budget Studios:** Act as a "poor man's recording studio"
 
-- **Spontaneous Inspiration:** Since the app works as a normal recorder when the server is away, you can capture ideas anywhere and have them automatically "cleaned up" the moment you walk back into your home network.
+- ~~***On-the-Go Recording:** Record anywhere and automatically enhance files when reconnecting to the server.*~~
 
 # UI Mockups
 
@@ -65,11 +65,19 @@ Our project makes professional audio recording easy and affordable by using the 
 
 4. The IP's that responds "alive" is identified as the Controllers.
 
-use `asyncio` to ping all 255 addresses simultaneously. It usually takes less than 2 seconds to find the controller.
+send the pings asyncronously to discover the server faster. **Optimization :** do a light-weigh TCP handshake on the ip:port before trying sending http request.
 
 ### Option 2: using QR code
 
 server displays a qr code containing info about ip address, port number and server's name.
+
+### Option 3: (Fallback) manually entering IP address
+
+Option 1 is not garunteed to find the server since some routers interpret the bruite force method as a security attack and blocks the traffic. That's why option 2 exist. If option two doesn't work for some reason, manually entering the ip address will be the last resort for establishing connection.
+
+### ~~mDNS for server discovery~~
+
+> NOTE: option one appeared more reliable than mDNS; when tested. 
 
 ---
 
@@ -103,8 +111,6 @@ We will be using this technology to enable real time control command transfer an
 
 5. the client should acknowledge the request back to server.
    
-   
-   
    ---
 
 ## Backend
@@ -123,54 +129,179 @@ We will be deploying our **backend in python**, due for the following **reasons*
 
 ---
 
-# Communication Endpoints
+# Endpoints
 
-### 1. Client (Mobile App) → Server Routes
+#### 1. Server Metadata
 
-| Trigger (UI / Event) | Route                     | Method | Purpose                     | Payload (Summary)            |
-| -------------------- | ------------------------- | ------ | --------------------------- | ---------------------------- |
-| Connect button       | `/api/clients/register`   | POST   | Register client with server | Client name, IP, device info |
-| Disconnect button    | `/api/clients/unregister` | POST   | Remove client from server   | Client ID                    |
-| Periodic (heartbeat) | `/api/clients/status`     | POST   | Update recording state      | Client ID, state, battery    |
-| Recording stop       | `/api/audio/upload`       | POST   | Upload recorded audio       | Audio file + metadata        |
+| Purpose            | Endpoint      | Method |
+| ------------------ | ------------- | ------ |
+| Get server info    | `/session`    | GET    |
+| Update server name | `/session`    | PATCH  |
+| Get QR code        | `/session/qr` | GET    |
 
-### 2. Server → Client Control (WebSocket)
+Example:
 
-| Trigger (Dashboard)    | Channel             | Message Type      | Action                 |
-| ---------------------- | ------------------- | ----------------- | ---------------------- |
-| Start all / mic button | `/ws/control`       | `START_RECORDING` | Begin recording        |
-| Stop button            | `/ws/control`       | `STOP_RECORDING`  | Stop recording         |
-| Client event           | `/ws/control`       | `STATE_UPDATE`    | Update dashboard state |
-| Server name change     | `/ws/server-rename` | `SERVER_RENAME`   | Rename server          |
-| Rename client          | `/ws/client-rename` | `CLIENT_RENAME`   | Rename client          |
+```json
+// GET /session
+{
+  "name": "Podcast101",
+  "ip": "192.168.1.172",
+  "clients": 3
+}
+```
 
-### 3. Server Dashboard – Device Control Routes
+#### 2. Client Lifecycle
 
-| UI Element            | Route                       | Method | Purpose                |
-| --------------------- | --------------------------- | ------ | ---------------------- |
-| Header section        | `/api/server/info`          | GET    | Fetch server name & IP |
-| Device list           | `/api/clients`              | GET    | List connected clients |
-| Start all recordings  | `/api/control/start-all`    | POST   | Start all clients      |
-| Stop all recordings   | `/api/control/stop-all`     | POST   | Stop all clients       |
-| Individual mic button | `/api/control/client/start` | POST   | Start single client    |
-| Individual stop       | `/api/control/client/stop`  | POST   | Stop single client     |
-| X button              | `/api/clients/remove`       | POST   | Remove client          |
+| Purpose         | Endpoint        | Method |
+| --------------- | --------------- | ------ |
+| Register client | `/clients`      | POST   |
+| List clients    | `/clients`      | GET    |
+| Get client info | `/clients/{id}` | GET    |
+| Remove client   | `/clients/{id}` | DELETE |
+| Rename client   | `/clients/{id}` | PATCH  |
 
-### 4. Recordings Management Routes
+Example:
 
-| UI Element       | Route                                  | Method | Function               |
-| ---------------- | -------------------------------------- | ------ | ---------------------- |
-| Recordings list  | `/api/recordings`                      | GET    | List all recordings    |
-| Trash icon       | `/api/recordings/{id}`                 | DELETE | Delete recording       |
-| Delete all       | `/api/recordings`                      | DELETE | Remove all recordings  |
-| ✨ button         | `/api/recordings/{id}/enhance`         | POST   | Enhance recording      |
-| Enhance all      | `/api/recordings/enhance-all`          | POST   | Enhance all recordings |
-| Play button      | `/api/recordings/{id}/stream`          | GET    | Stream audio           |
-| Merge & download | `/api/recordings/merge`                | POST   | Merge all audio        |
-| Download         | `/api/recordings/merged/{session}.wav` | GET    | Download merged file   |
+```json
+// POST /clients
+{
+  "name": "Ester Brown",
+  "ip": "192.168.1.132",
+  "device": "Pixel 6"
+}
+```
 
-### 5. Discovery (Non-HTTP)
+#### 3. Client Status / Heartbeat
 
-| Mechanism            | Purpose                              |
-| -------------------- | ------------------------------------ |
-| mDNS / UDP broadcast | Discover available VocalLink servers |
+| Purpose      | Endpoint              | Method |
+| ------------ | --------------------- | ------ |
+| Update state | `/clients/{id}/state` | PUT    |
+
+```json
+// PUT /clients/42/state
+{
+  "recording": true,
+}
+```
+
+#### 4. Upload After Recording
+
+| Purpose      | Endpoint      | Method |
+| ------------ | ------------- | ------ |
+| Upload audio | `/recordings` | POST   |
+
+Payload: multipart/form-data
+
+```
+file
+client_id
+timestamp
+session_id
+```
+
+#### 5. List & Delete
+
+| Purpose         | Endpoint           | Method |
+| --------------- | ------------------ | ------ |
+| List recordings | `/recordings`      | GET    |
+| Get recording   | `/recordings/{id}` | GET    |
+| Delete          | `/recordings/{id}` | DELETE |
+| Delete all      | `/recordings`      | DELETE |
+
+#### 6. Enhancement
+
+| Purpose     | Endpoint                   | Method |
+| ----------- | -------------------------- | ------ |
+| Enhance one | `/recordings/{id}/enhance` | POST   |
+| Enhance all | `/recordings/enhance`      | POST   |
+
+Optional body:
+
+```json
+{
+  "model": "denoise-v2",
+  "level": "high"
+}
+```
+
+#### 7. Streaming & Download
+
+| Purpose  | Endpoint                    | Method |
+| -------- | --------------------------- | ------ |
+| Stream   | `/recordings/{id}/stream`   | GET    |
+| Download | `/recordings/{id}/download` | GET    |
+
+#### 8. Merging / Export
+
+| Purpose         | Endpoint         | Method |
+| --------------- | ---------------- | ------ |
+| Merge           | `/export/merge`  | POST   |
+| Download merged | `/export/latest` | GET    |
+
+#### 9. WebSockets Control Channel
+
+```
+/ws/control
+```
+
+All commands go through this endpoint.
+
+**Message Format :**
+
+```json
+// record all
+{
+  "type": "command",
+  "target": "all",
+  "action": "start_recording"
+}
+```
+
+```json
+// record specific client
+{
+  "type": "command",
+  "target": "client",
+  "client_id": 42,
+  "action": "stop_recording"
+}
+```
+
+```json
+// State Updates (Client → Server)
+{
+  "type": "state",
+  "client_id": 42,
+  "recording": true,
+}
+```
+
+#### Summary
+
+| Category   | Purpose               | Endpoint                    | Method | Description                                    |
+| ---------- | --------------------- | --------------------------- | ------ | ---------------------------------------------- |
+| Session    | Get session info      | `/session`                  | GET    | Fetch server name, IP, and session metadata    |
+| Session    | Update session        | `/session`                  | PATCH  | Rename or update session information           |
+| Session    | Get QR code           | `/session/qr`               | GET    | Generate connection QR code                    |
+| Client     | Register client       | `/clients`                  | POST   | Register new device with server                |
+| Client     | List clients          | `/clients`                  | GET    | Retrieve all connected clients                 |
+| Client     | Get client details    | `/clients/{id}`             | GET    | Fetch specific client information              |
+| Client     | Update client         | `/clients/{id}`             | PATCH  | Rename or update client metadata               |
+| Client     | Remove client         | `/clients/{id}`             | DELETE | Disconnect and remove client                   |
+| Client     | Update client state   | `/clients/{id}/state`       | PUT    | Update recording status, battery, device state |
+| Client     | Start recording       | `/clients/{id}/recording`   | POST   | Start recording on a specific client           |
+| Client     | Stop recording        | `/clients/{id}/recording`   | DELETE | Stop recording on a specific client            |
+| Control    | Start all recording   | `/control/recording`        | POST   | Start recording on all connected clients       |
+| Control    | Stop all recording    | `/control/recording`        | DELETE | Stop recording on all connected clients        |
+| Recordings | Upload recording      | `/recordings`               | POST   | Upload recorded audio file                     |
+| Recordings | List recordings       | `/recordings`               | GET    | Retrieve all recordings                        |
+| Recordings | Get recording info    | `/recordings/{id}`          | GET    | Fetch recording metadata                       |
+| Recordings | Delete recording      | `/recordings/{id}`          | DELETE | Remove specific recording                      |
+| Recordings | Delete all recordings | `/recordings`               | DELETE | Remove all recordings                          |
+| Recordings | Enhance recording     | `/recordings/{id}/enhance`  | POST   | Apply ML enhancement to one recording          |
+| Recordings | Enhance all           | `/recordings/enhance`       | POST   | Apply ML enhancement to all recordings         |
+| Recordings | Stream recording      | `/recordings/{id}/stream`   | GET    | Stream audio playback                          |
+| Recordings | Download recording    | `/recordings/{id}/download` | GET    | Download audio file                            |
+| Export     | Merge recordings      | `/export/merge`             | POST   | Merge all session recordings into one file     |
+| Export     | Download merged file  | `/export/latest`            | GET    | Download most recent merged output             |
+| WebSocket  | Real-time control     | `/ws/control`               | WS     | Bidirectional channel for commands and updates |
