@@ -276,32 +276,6 @@ All commands go through this endpoint.
   "recording": true,
 }
 ```
-
-#### Summary
-
-| Category   | Purpose               | Endpoint                    | Method | Description                                    |
-| ---------- | --------------------- | --------------------------- | ------ | ---------------------------------------------- |
-| Session    | Get session info      | `/session`                  | GET    | Fetch server name, IP, and session metadata    |
-| Session    | Update session        | `/session`                  | PATCH  | Rename or update session information           |
-| Session    | Get QR code           | `/session/qr`               | GET    | Generate connection QR code                    |
-| Client     | Register client       | `/clients`                  | POST   | Register new device with server                |
-| Client     | List clients          | `/clients`                  | GET    | Retrieve all connected clients                 |
-| Client     | Get client details    | `/clients/{id}`             | GET    | Fetch specific client information              |
-| Client     | Update client         | `/clients/{id}`             | PATCH  | Rename or update client metadata               |
-| Client     | Remove client         | `/clients/{id}`             | DELETE | Disconnect and remove client                   |
-| Recordings | Upload recording      | `/recordings`               | POST   | Upload recorded audio file                     |
-| Recordings | List recordings       | `/recordings`               | GET    | Retrieve all recordings                        |
-| Recordings | Get recording info    | `/recordings/{id}`          | GET    | Fetch recording metadata                       |
-| Recordings | Delete recording      | `/recordings/{id}`          | DELETE | Remove specific recording                      |
-| Recordings | Delete all recordings | `/recordings`               | DELETE | Remove all recordings                          |
-| Recordings | Enhance recording     | `/recordings/{id}/enhance`  | POST   | Apply ML enhancement to one recording          |
-| Recordings | Enhance all           | `/recordings/enhance`       | POST   | Apply ML enhancement to all recordings         |
-| Recordings | Stream recording      | `/recordings/{id}/stream`   | GET    | Stream audio playback                          |
-| Recordings | Download recording    | `/recordings/{id}/download` | GET    | Download audio file                            |
-| Export     | Merge recordings      | `/export/merge`             | POST   | Merge all session recordings into one file     |
-| Export     | Download merged file  | `/export/latest`            | GET    | Download most recent merged output             |
-| WebSocket  | Real-time control     | `/ws/control`               | WS     | Bidirectional channel for commands and updates |
-
 ---
 
 # Problems to be identified
