@@ -55,7 +55,7 @@ Our project makes professional audio recording easy and affordable by using the 
 
 4. The IP's that responds "alive" is identified as the Controllers.
 
-send the pings asyncronously to discover the server faster. **Optimization :** do a light-weigh TCP handshake on the ip:port before trying sending http request.
+send the pings asyncronously to discover the server faster. **Optimization :** do a light-weight TCP handshake on the ip:port before sending http request.
 
 ### Option 2: using QR code
 
@@ -67,7 +67,7 @@ Option 1 is not garunteed to find the server since some routers interpret the br
 
 ### ~~mDNS for server discovery~~
 
-> NOTE: option one appeared more reliable than mDNS; when tested. 
+> NOTE: option one appeared more reliable than mDNS when it was tested. 
 
 ## REST API and WebSockets for communication
 
@@ -119,11 +119,17 @@ We will be deploying our **backend in python**, due for the following **reasons*
 
 #### Server Dashboard
 
-![Dashboard](mockups/dashboard.png)
+<div>
+    <img src="mockups/dashboard.png" width="48%">
+    <img src="mockups/dashboard_unreachable.png" width="48%">
+</div>
 
 #### Client's Server Selection Page
 
-![client](mockups/client's-server-selection-view.png)
+<div>
+    <img src="mockups/recorder.png" width="48%">
+    <img src="mockups/recorder_unreachable.png" width = "48%">
+</div>
 
 > [link to choosen client side application](https://github.com/0x11a41/fossify-voice-recorder#)
 
@@ -300,7 +306,7 @@ All commands go through this endpoint.
 
 # Problems to be identified
 
-1. **Clock synchronization:** If the server sends a "START" command via WebSocket, Client A might receive it 10ms later, and Client B might receive it 150ms later due to network jitter. When you merge the files, the speakers will be out of sync, creating an echo or "phasing" effect. We need a mechanism to sync clocks (like a simplified NTP) or include a **timestamp** in the metadata of the audio file that records exactly when the "Record" button was triggered in Unix time (milliseconds).
+1. **Clock synchronization:** If the server sends a "START" command via WebSocket, Client A might receive it 10ms later, and Client B might receive it 150ms later due to network jitter. When we merge the files, the speakers will be out of sync, creating an echo or "phasing" effect. We need a mechanism to sync clocks (like a simplified NTP) or include a **timestamp** in the metadata of the audio file that records exactly when the "Record" button was triggered in Unix time (milliseconds).
 
 2. **Android development:** This is the unknown territory we will be facing. A lot of LLM generated code will be required.
 
@@ -308,7 +314,7 @@ All commands go through this endpoint.
 
 4. **Failures and recovery:** Recovering disconnected recording sessions.
 
-5. **Enhancement processing states:** The `/enhance` endpoint shouldn't just be a POST that hangs. We might need a "status" field in your recording metadata: `[Original, Processing, Enhanced, Failed]`
+5. **Enhancement processing states:** The `/enhance` endpoint shouldn't just be a POST that hangs. We might need a "status" field in our recording metadata: `[Original, Processing, Enhanced, Failed]`
 
 ---
 
