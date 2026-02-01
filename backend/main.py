@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body
+from fastapi.middleware.cors import CORSMiddleware
 from zeroconf import ServiceInfo
 from contextlib import asynccontextmanager
 from zeroconf.asyncio import AsyncZeroconf
@@ -6,8 +7,13 @@ import socket
 import time
 import asyncio
 from backend.interfaces import SyncResponse
+from backend.utils import getRandomName
+from typing import Optional, Set
 
-def get_local_ip() -> str:
+PORT = 6210
+
+
+def getLocalIp() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("8.8.8.8", 80))
@@ -16,25 +22,36 @@ def get_local_ip() -> str:
         s.close()
     return ip
 
+
+"""
+app.state.prototype => 
+    controller: Optional[WebSocket]
+    recorders: Set[WebSocket]
+    port: int
+    ip: str
+    session_name: str
+    zc_engine: AsyncZeroconf
+    current_info: ServiceInfo
+"""
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.controller: WebSocket | None = None
-    app.state.recorders: set[WebSocket] = set()
+    app.state.controller: Optional[WebSocket] = None
+    app.state.recorders: Set[WebSocket] = set()
 
-    app.state.port = 6210
-    app.state.ip_str = get_local_ip()
-    app.state.server_name = "VocalLink"
+    app.state.port = PORT
+    app.state.ip = getLocalIp()
+    app.state.session_name = getRandomName()
     app.state.zc_engine = AsyncZeroconf()
 
     app.state.current_info = ServiceInfo(
         type_ = "_vocalink._tcp.local.",
-        name = f"{app.state.server_name}._vocalink._tcp.local.",
+        name = f"{app.state.session_name}._vocalink._tcp.local.",
         port = app.state.port,
-        addresses = [socket.inet_aton(app.state.ip_str)],
+        addresses = [socket.inet_aton(app.state.ip)],
     )
 
     await app.state.zc_engine.async_register_service(app.state.current_info)
-    print(f"Advertising {app.state.server_name} to local network...")
+    print(f"Advertising {app.state.session_name} to local network...")
     yield
     print("Shutting down...")
     await app.state.zc_engine.async_unregister_service(app.state.current_info)
@@ -42,7 +59,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
+app.add_middleware(
+    CORSMiddleware,  # ty:ignore[invalid-argument-type]
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.websocket("/ws/command")
 async def handle_commander(ws: WebSocket):
@@ -108,7 +131,10 @@ async def websocket_sync(ws: WebSocket):
     await ws.close()
 
 
-
 @app.get("/session")
 async def session_info():
-    return { "VOCAL_LINK": "running" }
+    return {
+        "name": app.state.session_name,
+         "ip": app.state.ip,
+         "active": len(app.state.recorders),
+    }

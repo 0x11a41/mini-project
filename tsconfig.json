@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "rootDir": "./frontend/scripts/src",
+    "outDir": "./frontend/scripts",
+    "lib": [
+      "DOM",
+      "ESNext"
+    ],
+    "module": "ESNext",
+    "target": "ESNext",
+    "esModuleInterop": true,
+    "strict": true,
+    "sourceMap": false,
+    "declaration": false,
+    "removeComments": true,
+    "skipLibCheck": true,
+    "moduleDetection": "force"
+  },
+  "include": [
+    "frontend/scripts/src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "frontend/scripts/*.js"
+  ]
+}

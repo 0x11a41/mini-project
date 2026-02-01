@@ -17,8 +17,11 @@ pkgs.mkShell {
     vscode-json-languageserver
     typescript-language-server
     websocat # to test websocket endpoints 
+    typescript
   ];
+
   shellHook = ''
-  echo "entered dev-shell: $(python --version)"
+    echo "Entered dev-shell"
+    echo "run \`make\` to run both runner.py and tsc -w"
   '';
 }

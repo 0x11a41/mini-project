@@ -4,277 +4,97 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Podcast101 Dashboard</title>
-
-		<style>
-
-			* {
-				box-sizing: border-box;
-				font-family: Arial, Helvetica, sans-serif;
-			}
-			
-			body {
-				background: #f6f6f6;
-				padding: 30px;
-			}
-			
-			/* Main Container */
-			.container {
-				max-width: 900px;
-				margin: auto;
-				background: white;
-				padding: 25px;
-				border-radius: 10px;
-				box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-			}
-			
-			/* Header */
-			.header {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				border-bottom: 2px dashed #ccc;
-				padding-bottom: 15px;
-			}
-			
-			.header h1 {
-				margin: 0;
-			}
-			
-			.subtext {
-				color: #666;
-				font-size: 14px;
-			}
-			
-			/* Section Headers */
-			.section-header {
-				margin-top: 25px;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-			}
-			
-			/* Buttons */
-			.btn {
-				padding: 7px 14px;
-				border: none;
-				border-radius: 6px;
-				cursor: pointer;
-				font-size: 14px;
-			}
-			
-			.btn-danger {
-				background: #ff6b6b;
-				color: white;
-			}
-			
-			.btn-success {
-				background: #51cf66;
-				color: white;
-			}
-			
-			.btn-light {
-				background: #e9ecef;
-			}
-			
-			/* Device / Recording Cards */
-			.card {
-				border: 1px solid #ddd;
-				border-radius: 8px;
-				padding: 12px 15px;
-				margin-top: 12px;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-			}
-			
-			.card-left {
-				display: flex;
-				align-items: center;
-				gap: 12px;
-			}
-			
-			.remove {
-				color: #888;
-				font-size: 18px;
-				cursor: pointer;
-			}
-			
-			/* Status */
-			.status {
-				color: #999;
-				font-size: 14px;
-			}
-			
-			/* Mic Button */
-			.mic {
-				background: #51cf66;
-				border: none;
-				color: white;
-				width: 36px;
-				height: 36px;
-				border-radius: 50%;
-				font-size: 18px;
-				cursor: pointer;
-			}
-			
-			/* Recording Buttons */
-			.icon-btn {
-				background: white;
-				border: 1px solid #ddd;
-				width: 34px;
-				height: 34px;
-				border-radius: 50%;
-				cursor: pointer;
-				margin-left: 5px;
-			}
-			
-			/* Play Button */
-			.play {
-				background: #51cf66;
-				color: white;
-				border: none;
-				width: 36px;
-				height: 36px;
-				border-radius: 50%;
-				cursor: pointer;
-				font-size: 16px;
-			}
-			
-			.meta {
-				color: #777;
-				font-size: 13px;
-			}
-			
-			hr {
-				margin: 30px 0;
-				border: none;
-				border-top: 2px dashed #ccc;
-			}
-		</style>
+		<link rel="stylesheet" href="style.css">
 	</head>
 
 	<body>
-
-		<div class="container">
-
-			<!-- Header -->
-			<div class="header">
-				<div>
-					<h1>podcast101 ✏️</h1>
-					<div class="subtext">
-						Your VocalLink server is hosted at <strong>192.168.1.172</strong>
-					</div>
-				</div>
-
-				<div>
-					<button class="btn btn-danger">Remove all</button>
-					<button class="btn btn-success">Start all devices</button>
+		<!-- sidebar -->
+		<aside class="sidebar">
+			<h3>⚙ Server Configuration</h3>
+			<div class="field">
+				<label>Server name</label>
+				<div class="input-row">
+					<input type="text" value="Podcast123" id="rename-field">
+					<button id="rename-save-btn">Save</button>
 				</div>
 			</div>
+
+			<div class="checkbox-row">
+				<span>Show recorder’s battery level</span>
+				<input type="checkbox">
+			</div>
+
+			<div class="checkbox-row">
+				<span>Another option</span>
+				<input type="checkbox">
+			</div>
+			<div class="qr-box">
+				<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=192.168.1.172" alt="QR code to establish connection">
+				<p>
+					If your device is having trouble
+					finding the server, scan this from
+					the VocalLink application
+				</p>
+			</div>
+		</aside>
+
+		<!-- ========== MAIN CONTENT ========== -->
+		<main id="main">
+			<div id="header"></div>
 
 			<!-- Devices -->
-			<div class="section-header">
-				<h3>Connected Devices (3)</h3>
-			</div>
-
-			<div class="card">
-				<div class="card-left">
-					<span class="remove">✖</span>
+			<section class="section">
+				<div class="section-header">
+					<h3>🔌 Connected Devices (3)</h3>
+				</div>
+				<div class="card">
+					<div class="card-left">
+						<span class="remove">✖</span>
+						<div>
+							<div class="device-name">Ester Brown (40%)</div>
+							<div class="device-meta">192.168.1.23</div>
+						</div>
+					</div>
 					<div>
-						<strong>Ester Brown</strong><br>
-						<span class="meta">192.168.1.23</span>
+						<span class="status">Not recording</span>
+						<button class="mic">🎤</button>
 					</div>
 				</div>
-
-				<div>
-					<span class="status">Not recording</span>
-					<button class="mic">🎤</button>
-				</div>
-			</div>
-
-			<div class="card">
-				<div class="card-left">
-					<span class="remove">✖</span>
-					<div>
-						<strong>Lucy Ellis</strong><br>
-						<span class="meta">192.168.1.3</span>
-					</div>
-				</div>
-
-				<div>
-					<span class="status">Not recording</span>
-					<button class="mic">🎤</button>
-				</div>
-			</div>
-
-			<div class="card">
-				<div class="card-left">
-					<span class="remove">✖</span>
-					<div>
-						<strong>Jean Maurn</strong><br>
-						<span class="meta">192.168.1.69</span>
-					</div>
-				</div>
-
-				<div>
-					<span class="status">Not recording</span>
-					<button class="mic">🎤</button>
-				</div>
-			</div>
-
-			<hr>
+			</section>
 
 			<!-- Recordings -->
-			<div class="section-header">
-				<h3>Recordings (2)</h3>
-
-				<div>
-					<button class="btn btn-danger">Delete all</button>
-					<button class="btn btn-light">✨ Enhance all</button>
-					<button class="btn btn-light">⬇ Merge & Download</button>
-				</div>
-			</div>
-
-			<!-- Recording Item -->
-			<div class="card">
-
-				<div class="card-left">
-					<button class="play">▶</button>
-
+			<section class="section">
+				<div class="section-header">
+					<h3>🎵 Recordings (2)</h3>
 					<div>
-						<strong>wednesday012026.m4a</strong><br>
-						<span class="meta">
-							Lucy Ellis · 00:50 · 2.35MB · 04:23 PM
-						</span>
+						<button class="btn btn-danger">Delete all</button>
+						<button class="btn btn-light">✨ Enhance all</button>
+						<button class="btn btn-light">⬇ Merge & Download</button>
 					</div>
 				</div>
 
-				<div>
-					<button class="icon-btn">✨</button>
-					<button class="icon-btn">⬇</button>
-					<button class="icon-btn btn-danger">✖</button>
-				</div>
-			</div>
-
-			<div class="card">
-
-				<div class="card-left">
-					<button class="play">▶</button>
-
+				<!-- Recording -->
+				<div class="card">
+					<div class="card-left">
+						<button class="play">▶</button>
+						<div>
+							<div class="device-name">
+								wednesday012026.m4a
+							</div>
+							<div class="record-meta">
+								Lucy Ellis · 00:50 · 2.35MB · 04:23 PM
+							</div>
+						</div>
+					</div>
 					<div>
-						<strong>wednesday012026.m4a</strong><br>
-						<span class="meta">
-							Lucy Ellis · 00:50 · 2.35MB · 04:23 PM
-						</span>
+						<button class="icon-btn">✨</button>
+						<button class="icon-btn">⬇</button>
+						<button class="icon-btn btn-danger">✖</button>
 					</div>
 				</div>
+			</section>
+		</main>
 
-				<div>
-					<button class="icon-btn">✨</button>
-					<button class="icon-btn">⬇</button>
-					<button class="icon-btn btn-danger">✖</button>
-				</div>
-			</div>
-		</div>
+		<script type="module" src="scripts/app.js"></script>
 	</body>
 </html>
