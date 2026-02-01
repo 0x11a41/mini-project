@@ -112,7 +112,10 @@ def main():
     # Start frontend
     if run_frontend:
         server = Server()
-        server.watch("frontend/")
+        server.watch(
+            "frontend/", 
+            ignore=lambda x: "frontend/scripts/src" in x or x.endswith(".ts")
+        )
 
         try:
             print(f"[*] Frontend running at {URL}")

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "rootDir": "./frontend/scripts/src",
-    "outDir": "./frontend/scripts",
+    "rootDir": "./frontend/src",
+    "outDir": "./frontend/dest",
     "lib": [
       "DOM",
       "ESNext"
@@ -17,10 +17,10 @@
     "moduleDetection": "force"
   },
   "include": [
-    "frontend/scripts/src/**/*"
+    "frontend/src/**/*"
   ],
   "exclude": [
     "node_modules",
-    "frontend/scripts/*.js"
+    "frontend/dest/*.js"
   ]
 }
