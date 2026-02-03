@@ -1,61 +1,19 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from zeroconf import ServiceInfo
 from contextlib import asynccontextmanager
-from zeroconf.asyncio import AsyncZeroconf
-import socket
-import time
-import asyncio
-from backend.interfaces import SyncResponse
-from backend.utils import getRandomName
-from typing import Optional, Set
+import uuid
 
-PORT = 6210
+from backend.interfaces import AppState, ClientMetadata, EventType, SessionState, ClientRegisteredMessage, CommandAction, CommandMessage
 
 
-def getLocalIp() -> str:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    finally:
-        s.close()
-    return ip
+app_state = AppState(port = 6210) # source of truth
 
 
-"""
-app.state.prototype => 
-    controller: Optional[WebSocket]
-    recorders: Set[WebSocket]
-    port: int
-    ip: str
-    session_name: str
-    zc_engine: AsyncZeroconf
-    current_info: ServiceInfo
-"""
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.controller: Optional[WebSocket] = None
-    app.state.recorders: Set[WebSocket] = set()
-
-    app.state.port = PORT
-    app.state.ip = getLocalIp()
-    app.state.session_name = getRandomName()
-    app.state.zc_engine = AsyncZeroconf()
-
-    app.state.current_info = ServiceInfo(
-        type_ = "_vocalink._tcp.local.",
-        name = f"{app.state.session_name}._vocalink._tcp.local.",
-        port = app.state.port,
-        addresses = [socket.inet_aton(app.state.ip)],
-    )
-
-    await app.state.zc_engine.async_register_service(app.state.current_info)
-    print(f"Advertising {app.state.session_name} to local network...")
+    await app_state.start_mdns()
     yield
-    print("Shutting down...")
-    await app.state.zc_engine.async_unregister_service(app.state.current_info)
-    await app.state.zc_engine.async_close()
+    await app_state.shutdown()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -69,72 +27,113 @@ app.add_middleware(
 
 @app.websocket("/ws/command")
 async def handle_commander(ws: WebSocket):
-    if app.state.controller is not None:
-        print("Connection rejected. Controller already attached!")
+    if await app_state.dashboard.available():
         await ws.accept()
         await ws.send_json({"error": "ALREADY_CONNECTED"})
-        await ws.close(code=1008) 
+        await ws.close(code=1008)
         return
 
-    await ws.accept()
-    app.state.controller = ws
-    
+    # Register dashboard
+    await app_state.dashboard.connect(ws)
+    clients = await app_state.sessions.get_info()
+
+    for client in clients:
+        msg = ClientRegisteredMessage(
+            event=EventType.CLIENT_REGISTERED,
+            body=client
+        )
+        await ws.send_json(msg.model_dump())
+
     try:
         while True:
             data = await ws.receive_json()
-            print(f"/ws/command: {data}")
-            
-            if app.state.recorders:
-                # Parallel broadcast to all nodes
-                await asyncio.gather(
-                    *[r.send_json(data) for r in app.state.recorders],
-                    return_exceptions=True
+            if "action" not in data:
+                await ws.send_json({"error": "MISSING_ACTION"})
+                continue
+
+            try:
+                action = CommandAction(data["action"])
+            except ValueError:
+                await ws.send_json({"error": "INVALID_ACTION"})
+                continue
+
+            payload = CommandMessage(action=action)
+            if action in (CommandAction.START_ALL, CommandAction.STOP_ALL):
+                await app_state.sessions.broadcast(payload.model_dump())
+
+            elif action in (CommandAction.START_ONE, CommandAction.STOP_ONE):
+                client_id = data.get("client_id")
+                if not client_id:
+                    await ws.send_json({"error": "MISSING_CLIENT_ID"})
+                    continue
+
+                await app_state.sessions.send_to_one(
+                    client_id,
+                    payload.model_dump()
                 )
-    except Exception as e:
-        print(f"Controller error or disconnect: {e}")
-    finally:
-        app.state.controller = None
-        print("Controller slot freed.")
-
-
-@app.websocket("/ws/inform")
-async def handle_sevants(ws: WebSocket):
-    await ws.accept()
-    app.state.recorders.add(ws)
-    try:
-        while True:
-            data = await ws.receive_json()
-            print(f"/ws/inform: {data}")
-            if app.state.controller:
-                await app.state.controller.send_json(data)
+            else:
+                await ws.send_json({
+                    "error": "UNKNOWN_ACTION",
+                    "action": action.value
+                })
     except WebSocketDisconnect:
-        app.state.recorders.discard(ws)
+        print("Dashboard disconnected")
+    except Exception as e:
+        print("Dashboard error:", e)
+    finally:
+        await app_state.dashboard.disconnect()
 
 
-# documentation in docs/NOTES.md
-@app.websocket("/ws/sync")
-async def websocket_sync(ws: WebSocket):
-    await ws.accept()
-    while True:
-        try:
-            data = await ws.receive_json()
-            t1 = int(data.get("t1"))  # validate early
-            t2 = int(time.time() * 1000)
-            t3 = int(time.time() * 1000)
-            await ws.send_json(SyncResponse(t1=t1, t2=t2, t3=t3).model_dump())
+# @app.websocket("/ws/inform")
+# async def handle_sevants(ws: WebSocket):
+#     await ws.accept()
+#     app.state.recorders.add(ws)
+#     try:
+#         while True:
+#             data = await ws.receive_json()
+#             print(f"/ws/inform: {data}")
+#             if app.state.controller:
+#                 await app.state.controller.send_json(data)
+#     except WebSocketDisconnect:
+#         app.state.recorders.discard(ws)
 
-        except WebSocketDisconnect:
-            return
-        except Exception as e:
-            print("Sync error:", e)
-            break
-    await ws.close()
+
+# # documentation in docs/NOTES.md
+# @app.websocket("/ws/sync")
+# async def websocket_sync(ws: WebSocket):
+#     await ws.accept()
+#     while True:
+#         try:
+#             data = await ws.receive_json()
+#             t1 = int(data.get("t1"))  # validate early
+#             t2 = int(time.time() * 1000)
+#             t3 = int(time.time() * 1000)
+#             await ws.send_json(SyncResponse(t1=t1, t2=t2, t3=t3).model_dump())
+
+#         except WebSocketDisconnect:
+#             return
+#         except Exception as e:
+#             print("Sync error:", e)
+#             break
+#     await ws.close()
 
 
 @app.get("/session")
-async def session_info():
-    return {
-        "name": app.state.session_name,
-         "ip": app.state.ip,
-         "active": len(app.state.recorders),
-    }
+async def getServerInfo():
+    return app_state.server_info.model_dump()
+
+
+@app.post("/clients", response_model=ClientMetadata)
+async def register_client(client: ClientMetadata):
+    client_id = str(uuid.uuid4())
+
+    client.id = client_id
+    client.state = SessionState.IDLE
+    client.clock_offset = 0.0
+    client.last_rtt = 0.0
+    client.last_sync = None
+
+    async with app_state.pending_lock:
+        app_state.pending_clients[client_id] = client
+
+    return client
