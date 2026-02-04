@@ -28,6 +28,8 @@ class WSEvents(str, Enum): # these are facts that should be notified
     SESSION_ACTIVATED = "session_activated" # to update session registration to frontend
     SESSION_ACTIVATE = "session_activate"
     SESSION_LEFT = "session_left"
+    VOLUNTARY_START = "voluntary_start"
+    VOLUNTARY_STOP = "voluntary_STOP"
 
 class WSAction(str, Enum): # these are intents of session or dashboard
     START_ALL = "start_all"
@@ -51,7 +53,7 @@ class SessionMetadata(BaseModel):
 class ServerInfo(BaseModel):
     name: str = Field(min_length=1, max_length=50)
     ip: str
-    sessions: List[SessionMetadata]
+    active_sessions: int = 0
 
 
 
@@ -89,6 +91,14 @@ class DashboardRenameMsg(BaseModel): # dashboard -> server -> sessions
     event: Literal[WSEvents.DASHBOARD_RENAME] = WSEvents.DASHBOARD_RENAME
     body: str # new_name
 
+class VoluntaryStartMsg(BaseModel): # session -> server -> dashboard
+    event: Literal[WSEvents.VOLUNTARY_START] = WSEvents.VOLUNTARY_START
+    body: SessionMetadata
+
+class VoluntaryStopMsg(BaseModel): # session -> server -> dashboard
+    event: Literal[WSEvents.VOLUNTARY_STOP] = WSEvents.VOLUNTARY_STOP
+    body: SessionMetadata
+
 # to contain action messages like start_all, end_all...
 class ActionMsg(BaseModel): # bidirectional
     action: WSAction
@@ -104,6 +114,8 @@ WSPayload = Union[
     SessionActivateRequestMsg,
     SessionActivateReportMsg,
     SessionLeftMsg,
+    VoluntaryStartMsg,
+    VoluntaryStopMsg,
     ActionMsg,
 ]
 
@@ -163,8 +175,9 @@ class DashboardHandler:
 class Session:
     __slots__ = ('meta', 'ws') 
     def __init__(self, meta: SessionMetadata, ws: WebSocket):
-        self.meta = meta
-        self.ws = ws
+        self.meta: SessionMetadata = meta
+        self.ws: WebSocket = ws
+
 
 class SessionsHandler: # thread safe
     def __init__(self):
@@ -173,7 +186,20 @@ class SessionsHandler: # thread safe
         self._lock = asyncio.Lock()
 
 
-    async def activeCount(self) -> int:
+    async def setStateAll(self, new_state: SessionState):
+        async with self._lock:
+            for session in self._active.values():
+                session.meta.state = new_state
+
+
+    async def setState(self, session_id: str, new_state: SessionState):
+        async with self._lock:
+            session = self._active.get(session_id)
+            if session:
+                session.meta.state = new_state
+            
+
+    async def getActiveCount(self) -> int:
         async with self._lock:
             return len(self._active)
 
@@ -331,7 +357,7 @@ class AppState:
         return ServerInfo(
             name=self.name,
             ip=self.ip,
-            sessions=await self.sessions.getMetaFromAllActive()
+            active_sessions = await self.sessions.getActiveCount()
         )
 
     def _make_mdns_conf(self) -> AsyncServiceInfo:
@@ -370,10 +396,6 @@ class AppState:
         await self.sessions.broadcast(DashboardRenameMsg(body=new_name))
 
 
-    async def update_session_count(self):
-        self.session_count = await self.sessions.activeCount()
-
-
     async def shutdown(self):
         if self.mdns_conf:
             await self.mdns.async_unregister_service(self.mdns_conf)
@@ -404,6 +426,13 @@ class AppState:
                 return
 
             await self.dashboard.notify(SessionActivateReportMsg(body=sessionMeta))
+        elif event == WSEvents.VOLUNTARY_START:
+            msg = VoluntaryStartMsg.model_validate(data)
+            self.dashboard.notify(msg)
+
+        elif event == WSEvents.VOLUNTARY_STOP:
+            msg = VoluntaryStopMsg.model_validate(data)
+            self.dashboard.notify(msg)
 
         else:
             print("[error] invalid event received: " + event)
@@ -442,51 +471,53 @@ class AppState:
     async def handle_ws_actions(self, msg: ActionMsg, ws: WebSocket):
         from_session = await self.sessions.session_id(ws)
         from_dashboard = ws == self.dashboard.ws()
-        if not from_dashboard or not from_session:
-            print("[error]! A session tried to send actions without proper handshake")
+        if not from_dashboard and not from_session:
+            print("[error] Unauthenticated action sender")
             return
 
         try:
-            ActionMsg.model_validate(msg)
+            msg = ActionMsg.model_validate(msg)
         except ValidationError as e:
             print(e)
             return
 
+        if msg.action in (WSAction.START_ALL, WSAction.START_ONE) and not from_dashboard:
+            print("[warn] Session attempted to start recording")
+            return
+
+        trigger = None
+        if msg.action in (WSAction.START_ALL, WSAction.START_ONE):
+            trigger = await self._calc_trigger_time()
+
+
         if msg.action == WSAction.START_ALL:
             action = ActionMsg(
-                               action=msg.action,
-                               trigger_time= await self._calc_trigger_time()
-                           )
-            if from_dashboard:
-                await self.sessions.broadcast(action)
-            elif from_session:
-                await self.dashboard.notify(action)
+                action=msg.action,
+                trigger_time=trigger
+            )
+            await self.sessions.broadcast(action)
+            await self.sessions.setStateAll(SessionState.RECORDING)
 
         elif msg.action == WSAction.START_ONE:
-            session_id = msg.session_id
-            if session_id:
-                action = ActionMsg(
-                                  action=msg.action,
-                                  session_id = session_id,
-                                  trigger_time= await self._calc_trigger_time()
-                                )
-                if from_dashboard:
-                    await self.sessions.send_to_one(session_id, action)
-                elif from_session:
-                    await self.dashboard.notify(action)
-                                        
+            if not msg.session_id:
+                return
+
+            action = ActionMsg(
+                action=msg.action,
+                session_id=msg.session_id,
+                trigger_time=trigger
+            )
+            await self.sessions.send_to_one(msg.session_id, action)
+            await self.sessions.setState(msg.session_id, SessionState.RECORDING)
+
         elif msg.action == WSAction.STOP_ALL:
-            if from_dashboard:
-                await self.sessions.broadcast(msg)
-            elif from_session:
-                await self.dashboard.notify(msg)
-            
+            await self.sessions.broadcast(msg)
+            await self.sessions.setStateAll(SessionState.IDLE)
+
         elif msg.action == WSAction.STOP_ONE:
             if msg.session_id:
-                if from_dashboard:
-                    await self.sessions.send_to_one(msg.session_id, msg)
-                elif from_session:
-                    await self.dashboard.notify(msg)
+                await self.sessions.send_to_one(msg.session_id, msg)
+                await self.sessions.setState(msg.session_id, SessionState.IDLE)
         
 
     
@@ -503,7 +534,6 @@ class AppState:
 
             await self.sessions.drop(session_id)
             await self.clock.remove(session_id)
-
 
             print("session [" + session_id + "] disconnected.")
         else:
