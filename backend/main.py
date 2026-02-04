@@ -1,9 +1,10 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uuid
 
-from backend.interfaces import AppState, ClientMetadata, EventType, SessionState, ClientRegisteredMessage, CommandAction, CommandMessage
+from backend.protocols import AppState, SessionMetadata, SessionState, SessionInitReportMsg, WSActionRequest, ActionMsg, SyncResponse, SyncReport, SyncRequest, SessionInitResponseMsg
 
 
 app_state = AppState(port = 6210) # source of truth
@@ -27,22 +28,17 @@ app.add_middleware(
 
 @app.websocket("/ws/command")
 async def handle_commander(ws: WebSocket):
-    if await app_state.dashboard.available():
+    if await app_state.dashboard.is_active():
         await ws.accept()
         await ws.send_json({"error": "ALREADY_CONNECTED"})
         await ws.close(code=1008)
         return
 
-    # Register dashboard
     await app_state.dashboard.connect(ws)
-    clients = await app_state.sessions.get_info()
+    sessionMetas = await app_state.sessions.getAllMeta()
 
-    for client in clients:
-        msg = ClientRegisteredMessage(
-            event=EventType.CLIENT_REGISTERED,
-            body=client
-        )
-        await ws.send_json(msg.model_dump())
+    for meta in sessionMetas:
+        await ws.send_json(SessionInitReportMsg(body=meta).model_dump())
 
     try:
         while True:
@@ -52,23 +48,23 @@ async def handle_commander(ws: WebSocket):
                 continue
 
             try:
-                action = CommandAction(data["action"])
+                action = WSActionRequest(data["action"])
             except ValueError:
                 await ws.send_json({"error": "INVALID_ACTION"})
                 continue
 
-            payload = CommandMessage(action=action)
-            if action in (CommandAction.START_ALL, CommandAction.STOP_ALL):
+            payload = ActionMsg(action=action)
+            if action in (WSActionRequest.START_ALL, WSActionRequest.STOP_ALL):
                 await app_state.sessions.broadcast(payload.model_dump())
 
-            elif action in (CommandAction.START_ONE, CommandAction.STOP_ONE):
-                client_id = data.get("client_id")
-                if not client_id:
-                    await ws.send_json({"error": "MISSING_CLIENT_ID"})
+            elif action in (WSActionRequest.START_ONE, WSActionRequest.STOP_ONE):
+                session_id = data.get("session_id")
+                if not session_id:
+                    await ws.send_json({"error": "MISSING_SESSION_ID"})
                     continue
 
                 await app_state.sessions.send_to_one(
-                    client_id,
+                    session_id,
                     payload.model_dump()
                 )
             else:
@@ -84,56 +80,55 @@ async def handle_commander(ws: WebSocket):
         await app_state.dashboard.disconnect()
 
 
-# @app.websocket("/ws/inform")
-# async def handle_sevants(ws: WebSocket):
-#     await ws.accept()
-#     app.state.recorders.add(ws)
-#     try:
-#         while True:
-#             data = await ws.receive_json()
-#             print(f"/ws/inform: {data}")
-#             if app.state.controller:
-#                 await app.state.controller.send_json(data)
-#     except WebSocketDisconnect:
-#         app.state.recorders.discard(ws)
+@app.websocket("/ws/inform")
+async def handle_sessions(ws: WebSocket):
+    pass
 
 
-# # documentation in docs/NOTES.md
-# @app.websocket("/ws/sync")
-# async def websocket_sync(ws: WebSocket):
-#     await ws.accept()
-#     while True:
-#         try:
-#             data = await ws.receive_json()
-#             t1 = int(data.get("t1"))  # validate early
-#             t2 = int(time.time() * 1000)
-#             t3 = int(time.time() * 1000)
-#             await ws.send_json(SyncResponse(t1=t1, t2=t2, t3=t3).model_dump())
+@app.websocket("/ws/sync/{session_id}")
+async def sync_endpoint(websocket: WebSocket, session_id: str):
+    if not await app_state.sessions.is_active(session_id):
+        await websocket.close(code=4003)
+        return
 
-#         except WebSocketDisconnect:
-#             return
-#         except Exception as e:
-#             print("Sync error:", e)
-#             break
-#     await ws.close()
+    await websocket.accept()
+    await app_state.sync.add(session_id, websocket)
+    try:
+        while True:
+            if not await app_state.sync.get(session_id):
+                return
+
+            data = await websocket.receive_json()
+            if "t1" in data:
+                req = SyncRequest.model_validate(data)
+                await app_state.sync.handle_ping(session_id, req)
+            elif "theta" in data:
+                report = SyncReport.model_validate(data)
+                await app_state.sessions.update_sync(session_id, report)
+                
+    except WebSocketDisconnect:
+        meta = await app_state.sessions.getMeta(session_id)
+        print(f"Sync disconnected: {meta and meta.name}")
+    finally:
+        await app_state.sync.remove(session_id)
 
 
-@app.get("/session")
+
+@app.get("/dashboard")
 async def getServerInfo():
-    return app_state.server_info.model_dump()
+    serverinfo = await app_state.server_info()
+    return serverinfo.model_dump()
 
 
-@app.post("/clients", response_model=ClientMetadata)
-async def register_client(client: ClientMetadata):
-    client_id = str(uuid.uuid4())
+@app.post("/sessions", response_model=SessionInitResponseMsg)
+async def register_session(meta: SessionMetadata):
+    session_id = str(uuid.uuid4())
 
-    client.id = client_id
-    client.state = SessionState.IDLE
-    client.clock_offset = 0.0
-    client.last_rtt = 0.0
-    client.last_sync = None
+    meta.id = session_id
+    meta.state = SessionState.IDLE
+    meta.theta = 0.0 # latency
+    meta.last_rtt = 0.0 # round trip time
+    meta.last_sync = None # to resync
 
-    async with app_state.pending_lock:
-        app_state.pending_clients[client_id] = client
-
-    return client
+    await app_state.sessions.stage(meta)
+    return SessionInitResponseMsg(body=meta).model_dump()

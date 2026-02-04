@@ -7,28 +7,27 @@ enum SessionState {
   ERROR = "error"
 }
 
-enum EventType {
+enum WSEvent {
   SESSION_INIT = "session_init",
-  CLIENT_REGISTERED = "client_registered",
   DASHBOARD_RENAME = "dashboard_rename",
-  SYNC_RESULT = "sync_result"
+  SESSION_RENAME = "session_rename",
+  SESSION_REGISTERED = "session_registered"
 }
 
-enum CommandAction {
+enum WSActionRequest {
   START_ALL = "start_all",
   STOP_ALL = "stop_all",
   START_ONE = "start_one",
-  STOP_ONE = "stop_one",
-  RENAME = "rename"
+  STOP_ONE = "stop_one"
 }
 
-interface ClientMetadata {
+interface SessionMetadata {
   id: string;
   name: string;
   ip: string;
   state: SessionState;
   battery_level?: number;
-  clock_offset: number;
+  theta: number;
   last_rtt: number;
   last_sync?: number;
 }
@@ -39,94 +38,118 @@ interface ServerInfo {
   session_count: number;
 }
 
-
-interface BaseWSMessage {
+interface BaseWSMsg {
   version: number;
   timestamp: number;
-  event: EventType;
+  event: WSEvent;
   body: any;
 }
 
-interface ClientRegisteredMessage extends BaseWSMessage {
-  event: EventType.CLIENT_REGISTERED;
-  body: ClientMetadata;
+interface SessionInitResponseMsg extends BaseWSMsg {
+  event: WSEvent.SESSION_INIT;
+  body: SessionMetadata;
 }
 
-interface SessionInitMessage extends BaseWSMessage {
-  event: EventType.SESSION_INIT;
-  body: ClientMetadata;
+interface SessionInitReportMsg extends BaseWSMsg {
+  event: WSEvent.SESSION_REGISTERED;
+  body: SessionMetadata;
 }
 
-interface DashboardRenameMessage extends BaseWSMessage {
-  event: EventType.DASHBOARD_RENAME;
+interface DashboardRenameMsg extends BaseWSMsg {
+  event: WSEvent.DASHBOARD_RENAME;
   body: {
     new_name: string;
   };
 }
+
+interface SessionRenameMsg extends BaseWSMsg {
+  event: WSEvent.SESSION_RENAME;
+  session_id: string;
+  body: {
+    new_name: string;
+  };
+}
+
+// Control message (send only)
+interface ActionMsg {
+  action: WSActionRequest;
+  session_id?: string;
+  trigger_time?: number;
+}
+
+type WSPayload =
+  | SessionInitResponseMsg
+  | SessionInitReportMsg
+  | DashboardRenameMsg
+  | SessionRenameMsg;
+
 
 
 class VocalLinkApp {
   public readonly URL = "http://localhost:6210";
   public server: ServerInfo | null = null;
   public ws: WebSocket | null = null;
-  
-  public sessions: Map<string, ClientMetadata> = new Map(); // live sessions store
+  public sessions = new Map<string, SessionMetadata>(); // Live session map
 
   setState(patch: Partial<VocalLinkApp>) {
     Object.assign(this, patch);
     render(this);
   }
 
-  handleMessage(msg: BaseWSMessage) {
-    console.log("WS:", msg);
+  handleMessage(msg: WSPayload) {
     switch (msg.event) {
-      case EventType.CLIENT_REGISTERED:
-      case EventType.SESSION_INIT: {
-        const client = msg.body as ClientMetadata;
-        this.sessions.set(client.id, client);
+      case WSEvent.SESSION_INIT:
+      case WSEvent.SESSION_REGISTERED: {
+        const session = msg.body;
+        this.sessions.set(session.id, session);
         this.setState({});
         break;
-      }
-      case EventType.DASHBOARD_RENAME: {
+      } case WSEvent.SESSION_RENAME: {
+        const session = this.sessions.get(msg.session_id);
+        if (!session) return;
+
+        session.name = msg.body.new_name;
+        this.setState({});
+        break;
+      } case WSEvent.DASHBOARD_RENAME: {
         if (!this.server) return;
+
         this.server.name = msg.body.new_name;
         this.setState({});
         break;
-      }
-      case EventType.SYNC_RESULT: {
-        const update = msg.body;
-        console.log("Sync:", update);
-        break;
-      }
-      default:
+      } default:
         console.warn("Unknown WS event:", msg);
     }
   }
 
-  sendCommand(action: CommandAction, clientId?: string) {
+  sendAction(action: WSActionRequest, sessionId?: string, triggerTime?: number) {
     if (!this.ws) return;
-    const payload: any = { action };
-    if (clientId) {
-      payload.client_id = clientId;
-    }
+    const payload: ActionMsg = {
+      action,
+      session_id: sessionId,
+      trigger_time: triggerTime
+    };
     this.ws.send(JSON.stringify(payload));
   }
 
+
   async setup(): Promise<boolean> {
-    const WS_URL = this.URL.replace(/^http/, "ws") + "/ws/command";
+    const WS_URL =
+      this.URL.replace(/^http/, "ws") + "/ws/command";
     try {
-      const res = await fetch(this.URL + "/session");
+      const res = await fetch(this.URL + "/dashboard");
       if (!res.ok) return false;
       this.server = await res.json();
+
       this.ws = new WebSocket(WS_URL);
 
       this.ws.onopen = () => {
         console.log("WS connected");
-      }
+      };
 
       this.ws.onerror = (e) => {
         console.error("WS error:", e);
-      }
+      };
 
       this.ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data);
@@ -142,6 +165,7 @@ class VocalLinkApp {
 }
 
 
+
 function renderMainHeader(app: VocalLinkApp) {
   if (!app.server) return;
   const header = document.getElementById("header");
@@ -154,69 +178,66 @@ function renderMainHeader(app: VocalLinkApp) {
         Server at <b>${app.server.ip}</b>
       </div>
     </div>
-
     <div class="actions">
       <button id="start-all" class="btn btn-success">
         🎤 Start All
       </button>
-
       <button id="stop-all" class="btn btn-danger">
         ⏹ Stop All
       </button>
     </div>
   `;
 
+  document.getElementById("start-all")?.addEventListener("click", () => {
+      // future time (500ms)
+      const trigger = Date.now() + 500;
+      app.sendAction(WSActionRequest.START_ALL, undefined, trigger);
+    });
 
-  document.getElementById("start-all")?.addEventListener("click", () =>
-      app.sendCommand(CommandAction.START_ALL)
-    );
-
-  document.getElementById("stop-all")?.addEventListener("click", () =>
-      app.sendCommand(CommandAction.STOP_ALL)
-    );
+  document.getElementById("stop-all")?.addEventListener("click", () => {
+      app.sendAction(
+        WSActionRequest.STOP_ALL
+      );
+    });
 }
 
 
-
-function createSessionCard( app: VocalLinkApp, client: ClientMetadata ): HTMLElement {
+function createSessionCard(app: VocalLinkApp, session: SessionMetadata): HTMLElement {
   const card = document.createElement("div");
   card.className = "card";
-  card.id = `client-${client.id}`;
+  card.id = `session-${session.id}`;
 
   card.innerHTML = `
     <div class="card-left">
       <div>
         <div class="device-name">
-          ${client.name}
-          ${client.battery_level
-            ? `(${client.battery_level}%)`
-            : ""}
+          ${session.name}
+          ${session.battery_level ? `(${session.battery_level}%)` : ""}
         </div>
-        <div class="device-meta">
-          ${client.ip}
-        </div>
+        <div class="device-meta"> ${session.ip} </div>
       </div>
     </div>
     <div class="card-right">
       <span class="status">
-        ${client.state}
+        ${session.state}
       </span>
       <button class="mic-btn">🎤</button>
     </div>
   `;
 
-  // Start/Stop single
-  card.querySelector(".mic-btn")
-    ?.addEventListener("click", () => {
-      if (client.state === SessionState.RECORDING) {
-        app.sendCommand(
-          CommandAction.STOP_ONE,
-          client.id
+  card.querySelector(".mic-btn")?.addEventListener("click", () => {
+      const trigger = Date.now() + 500;
+      if (session.state === SessionState.RECORDING) {
+        app.sendAction(
+          WSActionRequest.STOP_ONE,
+          session.id,
+          trigger
         );
       } else {
-        app.sendCommand(
-          CommandAction.START_ONE,
-          client.id
+        app.sendAction(
+          WSActionRequest.START_ONE,
+          session.id,
+          trigger
         );
       }
     });
@@ -224,23 +245,19 @@ function createSessionCard( app: VocalLinkApp, client: ClientMetadata ): HTMLEle
 }
 
 function renderDeviceSection(app: VocalLinkApp) {
-  const section =
-    document.getElementById("device-control");
+  const section = document.getElementById("device-control");
   if (!section) return;
 
-  const clients = Array.from(app.sessions.values());
+  const sessions = Array.from(app.sessions.values());
 
   section.innerHTML = `
     <div class="section-header">
-      <h3>
-        🔌 Connected Devices (${clients.length})
-      </h3>
+      <h3> 🔌 Connected Devices (${sessions.length}) </h3>
     </div>
   `;
 
-  for (const client of clients) {
-    const card = createSessionCard(app, client);
-    section.appendChild(card);
+  for (const s of sessions) {
+    section.appendChild(createSessionCard(app, s));
   }
 }
 

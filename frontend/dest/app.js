@@ -5,21 +5,20 @@ var SessionState;
     SessionState["UPLOADING"] = "uploading";
     SessionState["ERROR"] = "error";
 })(SessionState || (SessionState = {}));
-var EventType;
-(function (EventType) {
-    EventType["SESSION_INIT"] = "session_init";
-    EventType["CLIENT_REGISTERED"] = "client_registered";
-    EventType["DASHBOARD_RENAME"] = "dashboard_rename";
-    EventType["SYNC_RESULT"] = "sync_result";
-})(EventType || (EventType = {}));
-var CommandAction;
-(function (CommandAction) {
-    CommandAction["START_ALL"] = "start_all";
-    CommandAction["STOP_ALL"] = "stop_all";
-    CommandAction["START_ONE"] = "start_one";
-    CommandAction["STOP_ONE"] = "stop_one";
-    CommandAction["RENAME"] = "rename";
-})(CommandAction || (CommandAction = {}));
+var WSEvent;
+(function (WSEvent) {
+    WSEvent["SESSION_INIT"] = "session_init";
+    WSEvent["DASHBOARD_RENAME"] = "dashboard_rename";
+    WSEvent["SESSION_RENAME"] = "session_rename";
+    WSEvent["SESSION_REGISTERED"] = "session_registered";
+})(WSEvent || (WSEvent = {}));
+var WSActionRequest;
+(function (WSActionRequest) {
+    WSActionRequest["START_ALL"] = "start_all";
+    WSActionRequest["STOP_ALL"] = "stop_all";
+    WSActionRequest["START_ONE"] = "start_one";
+    WSActionRequest["STOP_ONE"] = "stop_one";
+})(WSActionRequest || (WSActionRequest = {}));
 class VocalLinkApp {
     URL = "http://localhost:6210";
     server = null;
@@ -30,44 +29,47 @@ class VocalLinkApp {
         render(this);
     }
     handleMessage(msg) {
-        console.log("WS:", msg);
         switch (msg.event) {
-            case EventType.CLIENT_REGISTERED:
-            case EventType.SESSION_INIT: {
-                const client = msg.body;
-                this.sessions.set(client.id, client);
+            case WSEvent.SESSION_INIT:
+            case WSEvent.SESSION_REGISTERED: {
+                const session = msg.body;
+                this.sessions.set(session.id, session);
                 this.setState({});
                 break;
             }
-            case EventType.DASHBOARD_RENAME: {
+            case WSEvent.SESSION_RENAME: {
+                const session = this.sessions.get(msg.session_id);
+                if (!session)
+                    return;
+                session.name = msg.body.new_name;
+                this.setState({});
+                break;
+            }
+            case WSEvent.DASHBOARD_RENAME: {
                 if (!this.server)
                     return;
                 this.server.name = msg.body.new_name;
                 this.setState({});
                 break;
             }
-            case EventType.SYNC_RESULT: {
-                const update = msg.body;
-                console.log("Sync:", update);
-                break;
-            }
             default:
                 console.warn("Unknown WS event:", msg);
         }
     }
-    sendCommand(action, clientId) {
+    sendAction(action, sessionId, triggerTime) {
         if (!this.ws)
             return;
-        const payload = { action };
-        if (clientId) {
-            payload.client_id = clientId;
-        }
+        const payload = {
+            action,
+            session_id: sessionId,
+            trigger_time: triggerTime
+        };
         this.ws.send(JSON.stringify(payload));
     }
     async setup() {
         const WS_URL = this.URL.replace(/^http/, "ws") + "/ws/command";
         try {
-            const res = await fetch(this.URL + "/session");
+            const res = await fetch(this.URL + "/dashboard");
             if (!res.ok)
                 return false;
             this.server = await res.json();
@@ -103,52 +105,51 @@ function renderMainHeader(app) {
         Server at <b>${app.server.ip}</b>
       </div>
     </div>
-
     <div class="actions">
       <button id="start-all" class="btn btn-success">
         🎤 Start All
       </button>
-
       <button id="stop-all" class="btn btn-danger">
         ⏹ Stop All
       </button>
     </div>
   `;
-    document.getElementById("start-all")?.addEventListener("click", () => app.sendCommand(CommandAction.START_ALL));
-    document.getElementById("stop-all")?.addEventListener("click", () => app.sendCommand(CommandAction.STOP_ALL));
+    document.getElementById("start-all")?.addEventListener("click", () => {
+        const trigger = Date.now() + 500;
+        app.sendAction(WSActionRequest.START_ALL, undefined, trigger);
+    });
+    document.getElementById("stop-all")?.addEventListener("click", () => {
+        app.sendAction(WSActionRequest.STOP_ALL);
+    });
 }
-function createSessionCard(app, client) {
+function createSessionCard(app, session) {
     const card = document.createElement("div");
     card.className = "card";
-    card.id = `client-${client.id}`;
+    card.id = `session-${session.id}`;
     card.innerHTML = `
     <div class="card-left">
       <div>
         <div class="device-name">
-          ${client.name}
-          ${client.battery_level
-        ? `(${client.battery_level}%)`
-        : ""}
+          ${session.name}
+          ${session.battery_level ? `(${session.battery_level}%)` : ""}
         </div>
-        <div class="device-meta">
-          ${client.ip}
-        </div>
+        <div class="device-meta"> ${session.ip} </div>
       </div>
     </div>
     <div class="card-right">
       <span class="status">
-        ${client.state}
+        ${session.state}
       </span>
       <button class="mic-btn">🎤</button>
     </div>
   `;
-    card.querySelector(".mic-btn")
-        ?.addEventListener("click", () => {
-        if (client.state === SessionState.RECORDING) {
-            app.sendCommand(CommandAction.STOP_ONE, client.id);
+    card.querySelector(".mic-btn")?.addEventListener("click", () => {
+        const trigger = Date.now() + 500;
+        if (session.state === SessionState.RECORDING) {
+            app.sendAction(WSActionRequest.STOP_ONE, session.id, trigger);
         }
         else {
-            app.sendCommand(CommandAction.START_ONE, client.id);
+            app.sendAction(WSActionRequest.START_ONE, session.id, trigger);
         }
     });
     return card;
@@ -157,17 +158,14 @@ function renderDeviceSection(app) {
     const section = document.getElementById("device-control");
     if (!section)
         return;
-    const clients = Array.from(app.sessions.values());
+    const sessions = Array.from(app.sessions.values());
     section.innerHTML = `
     <div class="section-header">
-      <h3>
-        🔌 Connected Devices (${clients.length})
-      </h3>
+      <h3> 🔌 Connected Devices (${sessions.length}) </h3>
     </div>
   `;
-    for (const client of clients) {
-        const card = createSessionCard(app, client);
-        section.appendChild(card);
+    for (const s of sessions) {
+        section.appendChild(createSessionCard(app, s));
     }
 }
 function render(app) {

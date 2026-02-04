@@ -167,16 +167,16 @@ When the user clicks "Start All" on the dashboard, the server sends a future-dat
 
 #### 1. Server Metadata
 
-| Purpose            | Endpoint      | Method |
-| ------------------ | ------------- | ------ |
-| Get server info    | `/session`    | GET    |
-| Update server name | `/session`    | PATCH  |
-| Get QR code        | `/session/qr` | GET    |
+| Purpose            | Endpoint        | Method |
+| ------------------ | --------------- | ------ |
+| Get server info    | `/dashboard`    | GET    |
+| Update server name | `/dashboard`    | PATCH  |
+| Get QR code        | `/dashboard/qr` | GET    |
 
 Example:
 
 ```json
-// GET /session
+// GET /dashboard
 {
   "name": "Podcast101",
   "ip": "192.168.1.172",
@@ -186,18 +186,18 @@ Example:
 
 #### 2. Client Lifecycle
 
-| Purpose         | Endpoint        | Method |
-| --------------- | --------------- | ------ |
-| Register client | `/clients`      | POST   |
-| List clients    | `/clients`      | GET    |
-| Get client info | `/clients/{id}` | GET    |
-| Remove client   | `/clients/{id}` | DELETE |
-| Rename client   | `/clients/{id}` | PATCH  |
+| Purpose         | Endpoint         | Method |
+| --------------- | ---------------- | ------ |
+| Register client | `/sessions`      | POST   |
+| List clients    | `/sessions`      | GET    |
+| Get client info | `/sessions/{id}` | GET    |
+| Remove client   | `/sessions/{id}` | DELETE |
+| Rename client   | `/sessions/{id}` | PATCH  |
 
 Example:
 
 ```json
-// POST /clients
+// POST /sessions
 {
   "name": "Ester Brown",
   "ip": "192.168.1.132",
