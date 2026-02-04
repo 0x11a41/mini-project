@@ -4,7 +4,7 @@ import asyncio
 import socket
 import time
 from fastapi import WebSocket
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from zeroconf.asyncio import AsyncZeroconf, AsyncServiceInfo
 
 from backend.utils import getLocalIp, getRandomName
@@ -29,7 +29,7 @@ class WSEvents(str, Enum): # these are facts that should be notified
     SESSION_ACTIVATE = "session_activate"
     SESSION_LEFT = "session_left"
 
-class WSActionRequest(str, Enum): # these are intents of session or dashboard
+class WSAction(str, Enum): # these are intents of session or dashboard
     START_ALL = "start_all"
     STOP_ALL = "stop_all"
     START_ONE = "start_one" # bidirectional
@@ -68,7 +68,7 @@ class SessionActivateRequestMsg(BaseModel): # session -> server
     event: Literal[WSEvents.SESSION_ACTIVATE] = WSEvents.SESSION_ACTIVATE
     body: str # session id
 
-class SessionActivateResponseMsg(BaseModel): # server -> dashboard
+class SessionActivateReportMsg(BaseModel): # server -> dashboard
     event: Literal[WSEvents.SESSION_ACTIVATED] = WSEvents.SESSION_ACTIVATED
     body: SessionMetadata
 
@@ -91,7 +91,7 @@ class DashboardRenameMsg(BaseModel): # dashboard -> server -> sessions
 
 # to contain action messages like start_all, end_all...
 class ActionMsg(BaseModel): # bidirectional
-    action: WSActionRequest
+    action: WSAction
     session_id: Optional[str] = None
     trigger_time: Optional[int] = None
 
@@ -102,7 +102,7 @@ WSPayload = Union[
     SessionRenameMsg,
     DashboardRenameMsg,
     SessionActivateRequestMsg,
-    SessionActivateResponseMsg,
+    SessionActivateReportMsg,
     SessionLeftMsg,
     ActionMsg,
 ]
@@ -160,20 +160,20 @@ class DashboardHandler:
 
 
 
+class Session:
+    __slots__ = ('meta', 'ws') 
+    def __init__(self, meta: SessionMetadata, ws: WebSocket):
+        self.meta = meta
+        self.ws = ws
 
 class SessionsHandler: # thread safe
     def __init__(self):
-        self._active: Dict[str, Dict] = {}
+        self._active: Dict[str, Session] = {}
         self._staging: Dict[str, SessionMetadata] = {} # session_id, meta
         self._lock = asyncio.Lock()
 
 
-    async def getAllMeta(self) -> List[SessionMetadata]:
-        async with self._lock:
-            return [s["meta"] for s in self._active.values()]
-
-
-    async def count(self) -> int:
+    async def activeCount(self) -> int:
         async with self._lock:
             return len(self._active)
 
@@ -188,75 +188,77 @@ class SessionsHandler: # thread safe
             return (session_id in self._active or session_id in self._staging)
 
 
-    async def getMeta(self, session_id: str) -> Optional[SessionMetadata]:
+    async def getMetaFromAllActive(self) -> List[SessionMetadata]:
+        async with self._lock:
+            return [s.meta for s in self._active.values()]
+
+
+    async def getMetaFromActive(self, session_id: str) -> Optional[SessionMetadata]:
         async with self._lock:
             s = self._active.get(session_id)
-            return s["meta"] if s else None
+            return s.meta if s else None
 
 
     # puts metadata into staging
     async def stage(self, meta: SessionMetadata) -> None:
         async with self._lock:
             self._staging[meta.id] = meta
-            print(self._staging)
 
     # release session_id entry from staging and put it into active 
-    async def commit(self, session_id: str, session_ws: WebSocket) -> SessionMetadata | None:
+    async def commit(self, session_id: str, session_ws: WebSocket) -> Optional[SessionMetadata]:
         async with self._lock:
             meta = self._staging.pop(session_id, None)
-        if not meta:
-            return None
+            if not meta:
+                if session_id in self._active:
+                    return self._active[session_id].meta
+                return None
 
-        async with self._lock:
-            self._active[meta.id] = { "meta": meta, "ws": session_ws }
-        return meta
+            self._active[meta.id] = Session(meta, session_ws)
+            return meta
 
 
     async def drop(self, session_id: str):
         async with self._lock:
-            session = self._active.get(session_id)
-            if not session:
-                return
-            del self._active[session_id]
+            if session_id in self._active:
+                del self._active[session_id]
+            elif session_id in self._staging:
+                del self._staging[session_id]
 
 
     async def send_to_one(self, session_id: str, data: WSPayload) -> None:
         async with self._lock:
-            session = self._active.get(session_id)
-        if not session:
-            return
-        await session["ws"].send_json(data.model_dump())
+            if session := self._active.get(session_id):
+                try:
+                    await session.ws.send_json(data.model_dump())
+                except Exception as e:
+                    print(f"Error sending to {session_id}: {e}")
 
 
     async def broadcast(self, data: WSPayload) -> None:
         async with self._lock:
-            session_ids = list(self._active.keys())
-        dead = []
-        for sid in session_ids:
+            targets = [(sid, s.ws) for sid, s in self._active.items()]
+        
+        payload = data.model_dump()
+        for sid, ws in targets:
             try:
-                await self.send_to_one(sid, data)
+                await ws.send_json(payload)
             except Exception:
-                dead.append(sid)
-
-        for sid in dead:
-            await self.drop(sid)
+                pass
 
     
-    async def update_sync(self, session_id: str, report: SyncReport):
-        meta = await self.getMeta(session_id)
-        if not meta:
-            return
-
+    async def update_sync(self, session_id: str, report: SyncReport) -> None:
         async with self._lock:
-            meta.theta = report.theta
-            meta.last_rtt = report.rtt
-            meta.last_sync = int(time.time() * 1000)
+            session = self._active.get(session_id)
+            if session:
+                session.meta.theta = report.theta
+                session.meta.last_rtt = report.rtt
+                session.meta.last_sync = int(time.time() * 1000)
 
 
     async def session_id(self, ws: WebSocket) -> Optional[str]:
         async with self._lock:
-            for session_id, data in self._active.items():
-                if data["ws"] is ws:
+            for session_id, session in self._active.items():
+                if session.ws is ws:
                     return session_id
         return None
         
@@ -329,7 +331,7 @@ class AppState:
         return ServerInfo(
             name=self.name,
             ip=self.ip,
-            sessions=await self.sessions.getAllMeta()
+            sessions=await self.sessions.getMetaFromAllActive()
         )
 
     def _make_mdns_conf(self) -> AsyncServiceInfo:
@@ -369,7 +371,7 @@ class AppState:
 
 
     async def update_session_count(self):
-        self.session_count = await self.sessions.count()
+        self.session_count = await self.sessions.activeCount()
 
 
     async def shutdown(self):
@@ -401,14 +403,83 @@ class AppState:
                 print(session_id + "was not found in staging area")
                 return
 
-            await self.dashboard.notify(SessionActivateResponseMsg(body=sessionMeta))
+            await self.dashboard.notify(SessionActivateReportMsg(body=sessionMeta))
 
         else:
             print("[error] invalid event received: " + event)
 
 
-    async def handle_ws_actions(self, data, ws: WebSocket):
-        pass
+    async def _get_trigger_time(self) -> int:
+        SAFETY_MS = 200
+        MIN_DELAY = 500
+        DEFAULT_DELAY = 800
+        MAX_SYNC_AGE = 10_000  # ms
+
+        metas = await self.sessions.getMetaFromAllActive()
+        valid_rtts = []
+        now = int(time.time() * 1000)
+
+        for meta in metas:
+            if not meta:
+                continue
+            if meta.last_rtt is None:
+                continue
+            if meta.last_sync is None:
+                continue
+            if now - meta.last_sync > MAX_SYNC_AGE:
+                continue
+            valid_rtts.append(meta.last_rtt)
+
+        if not valid_rtts:
+            delay = DEFAULT_DELAY
+        else:
+            max_rtt = max(valid_rtts)
+            delay = max(MIN_DELAY, int(max_rtt * 2) + SAFETY_MS)
+
+        return now + delay
+
+
+    async def handle_ws_actions(self, msg: ActionMsg, ws: WebSocket):
+        if not await self.sessions.session_id(ws) or ws != self.dashboard.ws():
+            print("[error]! A session tried to send actions without proper handshake")
+            return
+
+        try:
+            ActionMsg.model_validate(msg)
+        except ValidationError as e:
+            print(e)
+            return
+
+        if msg.action == WSAction.START_ALL:
+            action = ActionMsg(
+                               action=msg.action,
+                               trigger_time= await self._get_trigger_time()
+                           )
+            await self.sessions.broadcast(action)
+            await self.dashboard.notify(action)
+
+        elif msg.action == WSAction.START_ONE:
+            session_id = msg.session_id
+            if session_id:
+                action = ActionMsg(
+                                  action=msg.action,
+                                  session_id = session_id,
+                                  trigger_time= await self._get_trigger_time()
+                                )
+                await self.sessions.send_to_one(session_id, action)
+                await self.dashboard.notify(action)
+                                        
+                                        
+            
+        elif msg.action == WSAction.STOP_ALL:
+            await self.sessions.broadcast(msg)
+            await self.dashboard.notify(msg)
+            
+        elif msg.action == WSAction.STOP_ONE:
+            if msg.session_id:
+                await self.sessions.send_to_one(msg.session_id, msg)
+                await self.dashboard.notify(msg)
+        
 
     
     async def handle_disconnect(self, ws: WebSocket):
@@ -419,7 +490,7 @@ class AppState:
 
         session_id = await self.sessions.session_id(ws)
         if session_id:
-            meta = await self.sessions.getMeta(session_id)
+            meta = await self.sessions.getMetaFromActive(session_id)
             meta and await self.dashboard.notify(SessionLeftMsg(body=meta))
 
             await self.sessions.drop(session_id)

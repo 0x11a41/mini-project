@@ -1,76 +1,77 @@
-// backend protocols are defined below
-
 enum SessionState {
   IDLE = "idle",
   RECORDING = "recording",
   UPLOADING = "uploading",
-  ERROR = "error"
+  ERROR = "error",
 }
 
-enum WSEvent {
-  SESSION_INIT = "session_init",
+enum RESTEvents {
+  SESSION_STAGE = "session_stage",
+  SESSION_STAGED = "session_staged",
+}
+
+enum WSEvents {
+  DASHBOARD_INIT = "dashboard_init",
   DASHBOARD_RENAME = "dashboard_rename",
   SESSION_RENAME = "session_rename",
-  SESSION_REGISTERED = "session_registered"
+
+  SESSION_ACTIVATED = "session_activated",
+  SESSION_ACTIVATE = "session_activate",
+  SESSION_LEFT = "session_left",
 }
 
 enum WSActionRequest {
   START_ALL = "start_all",
   STOP_ALL = "stop_all",
   START_ONE = "start_one",
-  STOP_ONE = "stop_one"
+  STOP_ONE = "stop_one",
 }
+
 
 interface SessionMetadata {
   id: string;
-  name: string;
+  name: string; // 1–50 chars (enforce via validation if needed)
   ip: string;
   state: SessionState;
-  battery_level?: number;
+  battery_level?: number; // 0–100
   theta: number;
   last_rtt: number;
   last_sync?: number;
 }
 
+
 interface ServerInfo {
-  name: string;
+  name: string; // 1–50 chars
   ip: string;
-  session_count: number;
+  sessions: SessionMetadata[];
 }
 
-interface BaseWSMsg {
-  version: number;
-  timestamp: number;
-  event: WSEvent;
-  body: any;
-}
-
-interface SessionInitResponseMsg extends BaseWSMsg {
-  event: WSEvent.SESSION_INIT;
+interface SessionActivateReportMsg {
+  event: WSEvents.SESSION_ACTIVATED;
   body: SessionMetadata;
 }
 
-interface SessionInitReportMsg extends BaseWSMsg {
-  event: WSEvent.SESSION_REGISTERED;
+interface SessionLeftMsg {
+  event: WSEvents.SESSION_LEFT;
   body: SessionMetadata;
 }
 
-interface DashboardRenameMsg extends BaseWSMsg {
-  event: WSEvent.DASHBOARD_RENAME;
-  body: {
-    new_name: string;
-  };
+interface DashboardInitMsg {
+  event: WSEvents.DASHBOARD_INIT;
+  body?: string | null;
 }
 
-interface SessionRenameMsg extends BaseWSMsg {
-  event: WSEvent.SESSION_RENAME;
+interface SessionRenameMsg {
+  event: WSEvents.SESSION_RENAME;
   session_id: string;
-  body: {
-    new_name: string;
-  };
+  body: string; // new name
 }
 
-// Control message (send only)
+interface DashboardRenameMsg {
+  event: WSEvents.DASHBOARD_RENAME;
+  body: string; // new name
+}
+
 interface ActionMsg {
   action: WSActionRequest;
   session_id?: string;
@@ -78,10 +79,12 @@ interface ActionMsg {
 }
 
 type WSPayload =
-  | SessionInitResponseMsg
-  | SessionInitReportMsg
+  | DashboardInitMsg
+  | SessionRenameMsg
   | DashboardRenameMsg
-  | SessionRenameMsg;
+  | SessionActivateReportMsg
+  | SessionLeftMsg
+  | ActionMsg;
 
 
 

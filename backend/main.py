@@ -80,7 +80,7 @@ async def sync_endpoint(websocket: WebSocket, session_id: str):
                 await app_state.sessions.update_sync(session_id, report)
                 
     except WebSocketDisconnect:
-        meta = await app_state.sessions.getMeta(session_id)
+        meta = await app_state.sessions.getMetaFromActive(session_id)
         print(f"Sync disconnected: {meta and meta.name}")
     finally:
         await app_state.clock.remove(session_id)
