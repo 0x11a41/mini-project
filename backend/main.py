@@ -1,8 +1,11 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import ValidationError
 import uuid
+import qrcode
+import io
 
 from backend.protocols import (
     AppState, 
@@ -14,9 +17,9 @@ from backend.protocols import (
     WSPayload,
     WSKind,
     WSErrors,
+    QRData,
     send_error,
 )
-
 
 
 app = AppState(port = 6210) # source of truth
@@ -105,14 +108,37 @@ async def sync_endpoint(websocket: WebSocket, session_id: str):
 
 
 
-@api.get("/dashboard", response_model=ServerInfo)
-async def getServerInfo():
-    return await app.server_info()
-
-
 
 @api.post("/sessions", response_model=SessionStageResponseMsg)
 async def stage_session(req: SessionStageRequestMsg):
     req.body.id = str(uuid.uuid4())
     await app.sessions.stage(req.body)
     return SessionStageResponseMsg(body=req.body).model_dump()
+
+
+
+@api.get("/dashboard", response_model=ServerInfo)
+async def getServerInfo():
+    return await app.server_info()
+
+
+
+@api.get("/dashboard/qr")
+async def get_server_qr():
+    payload = QRData(name=app.name, ip=app.ip)
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=20,
+        border=2
+    )
+    qr.add_data(payload.model_dump())
+    qr.make(fit=True)
+   
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/png")

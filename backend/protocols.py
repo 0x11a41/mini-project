@@ -6,7 +6,7 @@ import time
 from fastapi import WebSocket
 from pydantic import BaseModel, Field, ValidationError
 from zeroconf.asyncio import AsyncZeroconf, AsyncServiceInfo
-from backend.utils import getLocalIp, getRandomName
+from backend.utils import get_local_ip, get_random_name
 
 
 class SessionMetadata(BaseModel):
@@ -101,6 +101,14 @@ class SyncResponse(BaseModel): # server -> client (The pong)
 class SyncReport(BaseModel): # client -> server (The report)
     theta: float
     rtt: float
+
+
+
+# QR code data interface
+class QRData(BaseModel):
+    type: str = "vocal_link_server"
+    name: str
+    ip: str
 
 
 
@@ -334,9 +342,9 @@ class AppState:
         server_name: Optional[str] = None
     ):
 
-        self.ip:str = ip or getLocalIp()
+        self.ip:str = ip or get_local_ip()
         self.port:int = port
-        self.name:str = server_name or getRandomName()
+        self.name:str = server_name or get_random_name()
 
         self.dashboard: DashboardHandler = DashboardHandler()
         self.sessions: SessionsHandler = SessionsHandler()

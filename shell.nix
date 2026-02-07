@@ -10,6 +10,8 @@ pkgs.mkShell {
     python3Packages.httpx
     python3Packages.zeroconf
     python3Packages.pydantic
+    python3Packages.qrcode
+    python3Packages.pillow
     ty
     ruff
     vscode-css-languageserver
