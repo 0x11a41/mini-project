@@ -8,7 +8,6 @@
   --text-muted: #777777;
   --border: #E0E0E0;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  --border: #3E3434;
   --accent: #E7965C;
   --accent-hover: #d67c56;
   --success: #4CAF50;
@@ -22,6 +21,7 @@ body.dark-theme {
   --bg-hover: #3A3232;
   --text-main: #FFFFFF;
   --text-muted: #AAAAAA;
+  --border: #3E3434;
   --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
