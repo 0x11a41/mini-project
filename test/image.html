@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Recordings List</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background: #fff;
+  padding: 30px;
+}
+
+/* Outer Card */
+.recordings-card {
+  border: 2px solid #bdbdbd;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Row */
+.recording {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 22px;
+}
+
+.recording + .recording {
+  border-top: 2px solid #bdbdbd;
+}
+
+/* Left Section */
+.left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Play Button */
+.play-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #f1a15f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Text Info */
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filename {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.meta {
+  font-size: 14px;
+  color: #6f6f6f;
+}
+
+/* Status badges */
+.badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+
+.raw {
+  background: #e5e5e5;
+  color: #555;
+}
+
+.transcribed {
+  background: #ffd6b3;
+  color: #b05a00;
+}
+
+.processing {
+  background: #cfeeff;
+  color: #0077b6;
+}
+
+.enhanced {
+  background: #d6ffcc;
+  color: #2d7a00;
+}
+
+/* Right Section */
+.actions {
+  display: flex;
+  gap: 14px;
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.icon-btn.delete {
+  background: #f48a8a;
+  color: #7a1f1f;
+}
+</style>
+</head>
+
+<body>
+
+<div class="recordings-card">
+
+  <!-- Row 1 -->
+  <div class="recording">
+    <div class="left">
+      <div class="play-btn">▶</div>
+      <div class="info">
+        <div class="filename">interview_host_final.m4a</div>
+        <div class="meta">Naushu · 02:20 sec</div>
+        <div class="badges">
+          <span class="badge raw">RAW</span>
+          <span class="badge transcribed">TRANSCRIBED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="icon-btn">✨</div>
+      <div class="icon-btn">▭</div>
+      <div class="icon-btn delete">🗑</div>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="recording">
+    <div class="left">
+      <div class="play-btn">▶</div>
+      <div class="info">
+        <div class="filename">Noise_test.m4a</div>
+        <div class="meta">Ajai · 02:20 sec</div>
+        <div class="badges">
+          <span class="badge processing">PROCESSING</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="icon-btn">✨</div>
+      <div class="icon-btn">▭</div>
+      <div class="icon-btn delete">🗑</div>
+    </div>
+  </div>
+
+  <!-- Row 3 -->
+  <div class="recording">
+    <div class="left">
+      <div class="play-btn">▶</div>
+      <div class="info">
+        <div class="filename">test recording.m4a</div>
+        <div class="meta">Hari · 02:20 sec</div>
+        <div class="badges">
+          <span class="badge enhanced">ENHANCED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="icon-btn">✨</div>
+      <div class="icon-btn">▭</div>
+      <div class="icon-btn delete">🗑</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
+
