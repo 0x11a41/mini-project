@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VocalLink</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --bg-body: #FAF7F5;
+      --bg-sidebar: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-hover: #F2F0EB;
+      --text-main: #000000;
+      --text-muted: #777777;
+      --border: #E0E0E0;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      --accent: #E7965C;
+      --accent-hover: #d67c56;
+      --success: #4CAF50;
+      --danger: #FF5252;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg-body);
+      text-align: center;
+      color: var(--text-main);
+    }
+
+    .header {
+      margin-top: 30px;
+      font-size: 28px;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .card {
+      margin: 30px auto;
+      width: 280px;
+      padding: 20px;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      background: var(--bg-card);
+      box-shadow: var(--shadow);
+    }
+
+    .text {
+      margin-top: 10px;
+      color: var(--text-muted);
+    }
+
+    .ip {
+      font-size: 26px;
+      color: var(--accent);
+      margin-top: 6px;
+      font-weight: bold;
+    }
+
+    .menu {
+      margin-top: 40px;
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+
+    .active {
+      margin: 15px auto;
+      width: 220px;
+      padding: 12px;
+      background: var(--accent);
+      color: var(--bg-sidebar);
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="menu">Dashboard</div>
+  <div class="active">Recordings</div>
+  <div class="menu">Settings</div>
+
+  <script>
+    new QRCode(document.getElementById("qrcode"), {
+      text: "192.168.1.138",
+      width: 160,
+      height: 160,
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  </script>
+
+</body>
+</html>
+
