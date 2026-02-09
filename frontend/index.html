@@ -7,9 +7,26 @@
 		<link rel="stylesheet" href="style.css">
 	</head>
 	<body class="light-theme">
-		<div class="app-container">
+		<div id="app">
+
 			<aside id="side-panel">
+				<h2>VocalLink</h2>
+
+				<div class="qrcode-wrapper">
+					<img src="http://localhost:6210/dashboard/qr" alt="Server QR Code">
+					<div class="label">scan to join session</div>
+					<div class="ip-address">192.168.1.138</div>
+				</div>
+
+				<menu>
+					<li id="dashboard-view-selector" class=" active">Dashboard</li>
+					<li id="recordings-view-selector">Recordings</li>
+					<li id="settings-view-selector">Settings</li>
+				</menu>
+
+				<div class="version">vocal-link-dashboard/v0.5-alpha</div>
 			</aside>
+
 			<main id="main-view">
 			</main>
 		</div>

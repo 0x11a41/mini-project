@@ -105,7 +105,12 @@ class VLApp {
       };
 
       this.ws.onopen = () => {
-        console.log("WS connected");
+        const payload: WSPayload = {
+          kind: WSKind.EVENT,
+          msg_type: WSEvents.DASHBOARD_INIT,
+          body: null
+        }
+        this.ws?.send(JSON.stringify(payload));
       };
 
       this.ws.onerror = (e) => {

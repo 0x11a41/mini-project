@@ -6,3 +6,4 @@ httpx
 zeroconf
 openai-whisper
 qrcode
+pillow

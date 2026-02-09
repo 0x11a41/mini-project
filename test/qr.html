@@ -1,133 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scan to Join Session</title>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Scan to Join Session</title>
 
-  <style>
-    :root {
-      --bg-body: #FAF7F5;
-      --bg-sidebar: #FFFFFF;
-      --bg-card: #FFFFFF;
-      --bg-hover: #F2F0EB;
+		<style>
+			:root {
+				--bg-body: #FAF7F5;
+				--bg-sidebar: #FFFFFF;
+				--bg-card: #FFFFFF;
+				--bg-hover: #F2F0EB;
+				
+				--text-main: #000000;
+				--text-muted: #777777;
+				
+				--border: #E0E0E0;
+				--shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+				
+				--accent: #EE6D11;
+				--accent-hover: #d67c56;
+				
+				--success: #4CAF50;
+				--danger: #FF5252;
+			}
+			
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+				font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			}
+			
+			body {
+				background-color: var(--bg-body);
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			
+			.session-card {
+				background-color: #F7F1ED;
+				border-radius: 20px;
+				padding: 32px 40px;
+				text-align: center;
+				border: 2px dotted var(--border);
+				max-width: 340px;
+				width: 100%;
+			}
+			
+			.qr-wrapper {
+				background-color: var(--bg-card);
+				padding: 16px;
+				
+				display: inline-block;
+			}
+			
+			.label {
+				margin-top: 18px;
+				font-size: 24px;
+				color: var(--text-muted);
+				font-weight: 425;
+			}
+			
+			.ip-address {
+				margin-top: 6px;
+				font-size: 30px;
+				font-weight: 400;
+				color: var(--accent);
+				letter-spacing: 0.25px;
+			}
+		</style>
+	</head>
+	<body>
 
-      --text-main: #000000;
-      --text-muted: #777777;
-
-      --border: #E0E0E0;
-      --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-
-      --accent: #EE6D11;
-      --accent-hover: #d67c56;
-
-      --success: #4CAF50;
-      --danger: #FF5252;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-body);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .session-card {
-      background-color: #F7F1ED;
-      border-radius: 20px;
-      padding: 32px 40px;
-      text-align: center;
-      border: 2px dotted var(--border);
-      max-width: 340px;
-      width: 100%;
-    }
-
-    .qr-wrapper {
-      background-color: var(--bg-card);
-      padding: 16px;
-      
-      display: inline-block;
-    }
-    
-    .label {
-      margin-top: 18px;
-      font-size: 24px;
-      color: var(--text-muted);
-      font-weight: 425;
-    }
-
-    .ip-address {
-      margin-top: 6px;
-      font-size: 30px;
-      font-weight: 400;
-      color: var(--accent);
-      letter-spacing: 0.25px;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="session-card">
-    <div class="qr-wrapper">
-	<svg xmlns="http://www.w3.org/2000/svg"
-	     viewBox="0 0 210 210"
-	     width="210"
-	     height="210"
-	     shape-rendering="crispEdges">
-	  <rect width="210" height="210" fill="#fff"/>
-
-	  <!-- Each module = 10x10 -->
-	  <g fill="#000">
-	    <!-- Finder patterns -->
-	    <rect x="0" y="0" width="70" height="70"/>
-	    <rect x="10" y="10" width="50" height="50" fill="#fff"/>
-	    <rect x="20" y="20" width="30" height="30"/>
-
-	    <rect x="140" y="0" width="70" height="70"/>
-	    <rect x="150" y="10" width="50" height="50" fill="#fff"/>
-	    <rect x="160" y="20" width="30" height="30"/>
-
-	    <rect x="0" y="140" width="70" height="70"/>
-	    <rect x="10" y="150" width="50" height="50" fill="#fff"/>
-	    <rect x="20" y="160" width="30" height="30"/>
-
-	    <!-- Data modules -->
-	    <rect x="80" y="0" width="10" height="10"/>
-	    <rect x="90" y="0" width="10" height="10"/>
-	    <rect x="110" y="0" width="10" height="10"/>
-
-	    <rect x="80" y="20" width="30" height="10"/>
-	    <rect x="120" y="20" width="10" height="10"/>
-
-	    <rect x="40" y="80" width="30" height="10"/>
-	    <rect x="80" y="80" width="10" height="10"/>
-	    <rect x="100" y="80" width="20" height="10"/>
-
-	    <rect x="60" y="100" width="10" height="10"/>
-	    <rect x="80" y="100" width="30" height="10"/>
-
-	    <rect x="120" y="120" width="10" height="10"/>
-	    <rect x="140" y="120" width="30" height="10"/>
-
-	    <rect x="100" y="140" width="10" height="30"/>
-	    <rect x="120" y="160" width="20" height="10"/>
-	  </g>
-	</svg>
-
-
-    </div>
-    <div class="label">scan to join session</div>
-    <div class="ip-address">192.168.1.138</div>
-  </div>
-
-</body>
+		<div class="qr-wrapper">
+			<img alt="qr code to establish connection" src="https://magiclen.org/qr-code-scanner/">
+			<div class="label">scan to join session</div>
+			<div class="ip-address">192.168.1.138</div>
+		</div>
+	</body>
 </html>
-
