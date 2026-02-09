@@ -1,100 +1,4 @@
-var SessionState;
-(function (SessionState) {
-    SessionState["IDLE"] = "idle";
-    SessionState["RECORDING"] = "recording";
-    SessionState["UPLOADING"] = "uploading";
-    SessionState["ERROR"] = "error";
-})(SessionState || (SessionState = {}));
-var WSEvent;
-(function (WSEvent) {
-    WSEvent["SESSION_INIT"] = "session_init";
-    WSEvent["DASHBOARD_RENAME"] = "dashboard_rename";
-    WSEvent["SESSION_RENAME"] = "session_rename";
-    WSEvent["SESSION_REGISTERED"] = "session_registered";
-})(WSEvent || (WSEvent = {}));
-var WSActionRequest;
-(function (WSActionRequest) {
-    WSActionRequest["START_ALL"] = "start_all";
-    WSActionRequest["STOP_ALL"] = "stop_all";
-    WSActionRequest["START_ONE"] = "start_one";
-    WSActionRequest["STOP_ONE"] = "stop_one";
-})(WSActionRequest || (WSActionRequest = {}));
-class VocalLinkApp {
-    URL = "http://localhost:6210";
-    server = null;
-    ws = null;
-    sessions = new Map();
-    setState(patch) {
-        Object.assign(this, patch);
-        render(this);
-    }
-    handleMessage(msg) {
-        switch (msg.event) {
-            case WSEvent.SESSION_INIT:
-            case WSEvent.SESSION_REGISTERED: {
-                const session = msg.body;
-                this.sessions.set(session.id, session);
-                this.setState({});
-                break;
-            }
-            case WSEvent.SESSION_RENAME: {
-                const session = this.sessions.get(msg.session_id);
-                if (!session)
-                    return;
-                session.name = msg.body.new_name;
-                this.setState({});
-                break;
-            }
-            case WSEvent.DASHBOARD_RENAME: {
-                if (!this.server)
-                    return;
-                this.server.name = msg.body.new_name;
-                this.setState({});
-                break;
-            }
-            default:
-                console.warn("Unknown WS event:", msg);
-        }
-    }
-    sendAction(action, sessionId, triggerTime) {
-        if (!this.ws)
-            return;
-        const payload = {
-            action,
-            session_id: sessionId,
-            trigger_time: triggerTime
-        };
-        this.ws.send(JSON.stringify(payload));
-    }
-    async setup() {
-        const WS_URL = this.URL.replace(/^http/, "ws") + "/ws/command";
-        try {
-            const res = await fetch(this.URL + "/dashboard");
-            if (!res.ok)
-                return false;
-            this.server = await res.json();
-            this.ws = new WebSocket(WS_URL);
-            this.ws.onopen = () => {
-                console.log("WS connected");
-            };
-            this.ws.onerror = (e) => {
-                console.error("WS error:", e);
-            };
-            this.ws.onmessage = (ev) => {
-                const msg = JSON.parse(ev.data);
-                this.handleMessage(msg);
-            };
-            return true;
-        }
-        catch (err) {
-            console.error("Init failed:", err);
-            return false;
-        }
-    }
-}
-function renderMainHeader(app) {
-    if (!app.server)
-        return;
+function renderMainHeader() {
     const header = document.getElementById("header");
     if (!header)
         return;
@@ -115,11 +19,10 @@ function renderMainHeader(app) {
     </div>
   `;
     document.getElementById("start-all")?.addEventListener("click", () => {
-        const trigger = Date.now() + 500;
-        app.sendAction(WSActionRequest.START_ALL, undefined, trigger);
+        console.log("start all");
     });
     document.getElementById("stop-all")?.addEventListener("click", () => {
-        app.sendAction(WSActionRequest.STOP_ALL);
+        console.log("stop all");
     });
 }
 function createSessionCard(app, session) {

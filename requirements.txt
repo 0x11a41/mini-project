@@ -4,3 +4,5 @@ websockets
 livereload
 httpx
 zeroconf
+openai-whisper
+qrcode

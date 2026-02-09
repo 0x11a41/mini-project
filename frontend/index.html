@@ -3,82 +3,51 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Podcast101 Dashboard</title>
+		<title>VocalLink UI</title>
 		<link rel="stylesheet" href="style.css">
 	</head>
+	<body class="dark-theme">
+		<div class="app-container">
 
-	<body>
-		<!-- sidebar -->
-		<aside class="sidebar">
-			<h3>⚙ Server Configuration</h3>
-			<div class="field">
-				<label>Server name</label>
-				<div class="input-row">
-					<input type="text" value="Podcast123" id="rename-field">
-					<button id="rename-save-btn">Save</button>
+			<aside class="sidebar">
+				<div class="brand">
+					<h2><span>Vocal</span>Link</h2>
 				</div>
-			</div>
 
-			<div class="checkbox-row">
-				<span>Show recorder’s battery level</span>
-				<input type="checkbox">
-			</div>
-
-			<div class="checkbox-row">
-				<span>Another option</span>
-				<input type="checkbox">
-			</div>
-			<div class="qr-box">
-				<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=192.168.1.172" alt="QR code to establish connection">
-				<p>
-					If your device is having trouble
-					finding the server, scan this from
-					the VocalLink application
-				</p>
-			</div>
-		</aside>
-
-		<!-- ========== MAIN CONTENT ========== -->
-		<main id="main">
-			<div id="header"></div>
-
-			<!-- Devices -->
-			<section id="device-control" class="section">
-			</section>
-
-			<!-- Recordings -->
-			<section id="recordings" class="section">
-				<div class="section-header">
-					<h3>🎵 Recordings (2)</h3>
-					<div>
-						<button class="btn btn-danger">Delete all</button>
-						<button class="btn btn-light">✨ Enhance all</button>
-						<button class="btn btn-light">⬇ Merge & Download</button>
+				<div class="qr-card">
+					<div class="qr-code">
+						<i class="fa-solid fa-qrcode fa-3x"></i>
+					</div>
+					<div class="qr-info">
+						<p class="server-id">Server101</p>
+						<p class="server-ip">192.168.1.172</p>
 					</div>
 				</div>
 
-				<!-- Recording -->
-				<div class="card">
-					<div class="card-left">
-						<button class="play">▶</button>
-						<div>
-							<div class="device-name">
-								wednesday012026.m4a
-							</div>
-							<div class="record-meta">
-								Lucy Ellis · 00:50 · 2.35MB · 04:23 PM
-							</div>
-						</div>
+				<nav class="nav-menu">
+					<div class="nav-item active" onclick="switchTab('dashboard', this)">
+						<span>Dashboard</span>
 					</div>
-					<div>
-						<button class="icon-btn">✨</button>
-						<button class="icon-btn">⬇</button>
-						<button class="icon-btn btn-danger">✖</button>
+					<div class="nav-item" onclick="switchTab('recordings', this)">
+						<span>Recordings</span>
+					</div>
+					<div class="nav-item" onclick="switchTab('settings', this)">
+						<span>Settings</span>
+					</div>
+				</nav>
+
+				<div class="sidebar-footer">
+					<div class="theme-toggle" onclick="toggleTheme()">
+						<i class="fa-solid fa-sun sun-icon"></i>
+						<i class="fa-solid fa-moon moon-icon"></i>
 					</div>
 				</div>
-			</section>
-		</main>
+			</aside>
 
-		<script type="module" src="dest/app.js"></script>
+			<main class="main-content">
+			</main>
+		</div>
+
+		<script src="dest/app.js"></script>
 	</body>
 </html>

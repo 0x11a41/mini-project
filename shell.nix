@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> { } }:
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -11,7 +11,7 @@ pkgs.mkShell {
     python3Packages.zeroconf
     python3Packages.pydantic
     python3Packages.qrcode
-    python3Packages.pillow
+    python3Packages.faster-whisper
     ty
     ruff
     vscode-css-languageserver
