@@ -13,8 +13,7 @@ class SessionMetadata(BaseModel):
     id: str
     name: str = Field(min_length=1, max_length=50)
     ip: str
-    battery_level: Optional[int] = Field(default=None, ge=0, le=100)
-    # Clock sync
+    battery_level: int = -1
     theta: float = 0.0
     last_rtt: float = 0.0
     last_sync: Optional[int] = None
