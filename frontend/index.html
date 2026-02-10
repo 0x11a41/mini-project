@@ -19,15 +19,71 @@
 				</div>
 
 				<menu>
-					<li id="dashboard-view-selector" class=" active">Dashboard</li>
-					<li id="recordings-view-selector">Recordings</li>
-					<li id="settings-view-selector">Settings</li>
+					<li class=" active">Dashboard</li>
+					<li>Recordings</li>
+					<li>Settings</li>
 				</menu>
 
-				<div class="version">vocal-link-dashboard/v0.5-alpha</div>
+				<i class="version">vocal-link-dashboard/v0.5-alpha</i>
 			</aside>
 
-			<main id="main-view">
+			<main id="main-view-wrapper">
+
+				<section class="dashboard-view stack">
+					<div class="view-header">
+						<h1>Server101</h1>
+						<p class="status">status: <span class="success">Active</span></p>
+					</div>
+					<b class="muted">Connected devices (0)</b>
+					<hr>
+					<section class="sessions-wrapper">
+						<div class="session-card">
+							<div class="left">
+								<div>
+									<b>Hari</b>
+									<div class="device-name">Moto g84 5G</div>
+								</div>
+								<div class="status-row">
+									<span>🔋 64%</span>
+									<span>📶 4ms</span>
+								</div>
+							</div>
+							<div class="right">
+								<p class="timer">00:00:00</p>
+								<div class="btn-circle record-icon"></div>
+							</div>
+						</div>
+					</section>
+
+					<section class="no-sessions-wrapper stack">
+						<b>No Active Connections</b>
+						<p class="muted">Waiting for recording nodes to join the network...</p>
+						<svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M1.90909 0C1.20273 0 0.636364 0.566364 0.636364 1.27273V3.81818C0.636364 4.52455 1.20273 5.09091 1.90909 5.09091H0V6.36364H7.63636V5.09091H5.72727C6.43364 5.09091 7 4.52455 7 3.81818V1.27273C7 0.566364 6.43364 0 5.72727 0H1.90909ZM1.90909 1.27273H5.72727V3.81818H1.90909V1.27273ZM8.27273 7.63636C7.56636 7.63636 7 8.20273 7 8.90909V11.4546C7 12.1609 7.56636 12.7273 8.27273 12.7273H6.36364V14H14V12.7273H12.0909C12.7973 12.7273 13.3636 12.1609 13.3636 11.4546V8.90909C13.3636 8.20273 12.7973 7.63636 12.0909 7.63636H8.27273ZM1.83273 7.92909L0.929091 8.83273L2.28455 10.1818L0.929091 11.5309L1.83273 12.4346L3.18182 11.0791L4.53091 12.4346L5.43455 11.5309L4.07909 10.1818L5.43455 8.83273L4.53091 7.92909L3.18182 9.28455L1.83273 7.92909ZM8.27273 8.90909H12.0909V11.4546H8.27273V8.90909Z"/>
+						</svg>
+					</section>
+
+					<div class="sessions-list-wrapper">
+					</div>
+				</section>
+
+				<section class="recordings-view stack">
+					<h1 class="view-header">Recordings</h1>
+					<hr>
+					<div class="recordings-segment">
+						<section class="recordings-wrapper">
+							<div class="recording">
+								<div class="left">
+									<div class="btn-circle pause-icon"></div>
+								</div>
+								<div class="right">
+								</div>
+							</div>
+						</section>
+						<section class="transcript-wrapper">
+						</section>
+					</div>
+				</section>
 			</main>
 		</div>
 
