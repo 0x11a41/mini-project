@@ -13,9 +13,10 @@ class SessionMetadata(BaseModel):
     id: str
     name: str = Field(min_length=1, max_length=50)
     ip: str
-    battery_level: int = -1
-    theta: float = -999
-    last_rtt: float = -999
+    battery: int = -1
+    device: str
+    theta: float = -1
+    last_rtt: float = -1
     last_sync: Optional[int] = None
 
 class ServerInfo(BaseModel):
@@ -46,7 +47,7 @@ class Rename(BaseModel):
     session_id: Optional[str] = None
 
 class WSActionTarget(BaseModel):
-    session_id: Optional[str] = None
+    session_id: str # "session_id=all" is multicast message
     trigger_time: Optional[int] = None
 
 class WSKind(str, Enum):
@@ -57,6 +58,7 @@ class WSKind(str, Enum):
 class WSErrors(str, Enum):
     INVALID_KIND = "invalid_kind" # kind field is invalid inside payload
     INVALID_EVENT = "invalid_event" # event field is invalid
+    INVALID_ACTION = "invalid_action" # action field is invalid
     INVALID_BODY = "invalid_body" # couldn't validate body
     ACTION_NOT_ALLOWED = "action_not_allowed"
     SESSION_NOT_FOUND = "session_not_found"
@@ -74,10 +76,10 @@ class WSEvents(str, Enum): # these are facts that should be notified
     FAIL="failed" # session[SessionMetadata]::server::dashboard
 
 class WSActions(str, Enum): # these are intents of session or dashboard
-    START_ALL = "start_all" # dashboard[None]::server::sessions
-    STOP_ALL = "stop_all" # dashboard[None]::server::sessions
-    START_ONE = "start_one" # dashboard[WSActionTarget]::server::target_session
-    STOP_ONE = "stop_one" # dashboard[WSActionTarget]::server::target_session
+    START = "start" # dashboard[WSActionTarget]::server::target_session
+    STOP = "stop" # dashboard[WSActionTarget]::server::target_session
+    STARTED = "started" # session[session_id]::server::dashboard
+    STOPPED = "stopped" # session[session_id]::server::dashboard
 
 
 class WSPayload(BaseModel):
@@ -454,7 +456,7 @@ class AppState:
             except ValidationError:
                 await send_error(ws, WSErrors.INVALID_BODY)
                 try:
-                    ws.close(code=1007)
+                    await ws.close(code=1007)
                 except Exception:
                     pass
                 return
@@ -468,7 +470,7 @@ class AppState:
             except ValidationError:
                 await send_error(ws, WSErrors.INVALID_BODY)
                 try:
-                    ws.close(code=1007)
+                    await ws.close(code=1007)
                 except Exception:
                     pass
                 return
@@ -482,7 +484,7 @@ class AppState:
             except ValidationError:
                 await send_error(ws, WSErrors.INVALID_BODY)
                 try:
-                    ws.close(code=1007)
+                    await ws.close(code=1007)
                 except Exception:
                     pass
                 return
@@ -492,16 +494,18 @@ class AppState:
             if not sessionMeta:
                 send_error(ws, WSErrors.SESSION_NOT_FOUND)
                 try:
-                    ws.close(code=1007)
+                    await ws.close(code=1007)
                 except Exception:
                     pass
                 return
 
-            await self.dashboard.notify(WSPayload(
-                                              kind=WSKind.EVENT,
-                                              msg_type=WSEvents.SESSION_ACTIVATED,
-                                              body=sessionMeta
-                                          ))
+            await self.dashboard.notify(
+                    WSPayload(
+                          kind=WSKind.EVENT,
+                          msg_type=WSEvents.SESSION_ACTIVATED,
+                          body=sessionMeta
+                      )
+                )
 
 
         elif event_type in (WSEvents.SESSION_SELF_START, WSEvents.SESSION_SELF_STOP):
@@ -510,7 +514,7 @@ class AppState:
             except ValidationError:
                 await send_error(ws, WSErrors.INVALID_BODY)
                 try:
-                    ws.close(code=1007)
+                    await ws.close(code=1007)
                 except Exception:
                     pass
                 return
@@ -524,7 +528,7 @@ class AppState:
         else:
             await send_error(ws, WSErrors.INVALID_EVENT)
             try:
-                ws.close(code=1007)
+                await ws.close(code=1007)
             except Exception:
                 pass
 
@@ -533,70 +537,63 @@ class AppState:
         if payload.kind != WSKind.ACTION:
             return
 
-        from_session = await self.sessions.session_id(ws)
-        from_dashboard = ws is self.dashboard.ws()
-        if not from_dashboard and not from_session:
+        from_session_id = await self.sessions.session_id(ws)
+        is_dashboard = (ws == self.dashboard.ws())
+        
+        if not is_dashboard and not from_session_id:
             print("[error] Unauthenticated action sender")
             await send_error(ws, WSErrors.ACTION_NOT_ALLOWED)
-            try:
-                ws.close(code=1007)
-            except Exception:
-                pass
             return
 
         action_type = payload.msg_type
 
-        if action_type in (WSActions.START_ALL, WSActions.START_ONE) and not from_dashboard:
-            print("[warn] Session attempted to start recording")
-            await send_error(ws, WSErrors.ACTION_NOT_ALLOWED)
+        if action_type in (WSActions.START, WSActions.STOP):
+            if not is_dashboard:
+                print(f"[warn] Session {from_session_id} attempted to issue command {action_type}")
+                await send_error(ws, WSErrors.ACTION_NOT_ALLOWED)
+                return
+
             try:
-                ws.close(code=1007)
-            except Exception:
-                pass
-            return
-
-        trigger = None
-        if action_type in (WSActions.START_ALL, WSActions.START_ONE):
-            trigger = await self._eval_trigger_time()
-
-
-        if action_type == WSActions.START_ALL:
-            payload.body = WSActionTarget(trigger_time=trigger)
-            await self.sessions.broadcast(payload)
-
-        elif action_type == WSActions.START_ONE:
-            try:
-                body = WSActionTarget.model_validate(payload.body)
+                target = WSActionTarget.model_validate(payload.body)
             except ValidationError as e:
-                print(f"validation error: {e}")
+                print(f"[error] Invalid action body: {e}")
+                await send_error(ws, WSErrors.INVALID_BODY)
                 return
-                
-            if await self.sessions.is_active(body.session_id):
-                payload.body = WSActionTarget(session_id=body.session_id, trigger_time=trigger)
-                await self.sessions.send_to_one(body.session_id, payload)
+
+            if action_type == WSActions.START:
+                trigger = await self._eval_trigger_time()
+                target.trigger_time = trigger
+                payload.body = target
+
+            if target.session_id.lower() == "all":
+                await self.sessions.broadcast(payload)
             else:
-                await send_error(ws, WSErrors.SESSION_NOT_FOUND)
+                if await self.sessions.is_active(target.session_id):
+                    await self.sessions.send_to_one(target.session_id, payload)
+                else:
+                    await send_error(ws, WSErrors.SESSION_NOT_FOUND)
 
+        elif action_type in (WSActions.STARTED, WSActions.STOPPED):
+            if not from_session_id:
+                print("[warn] Dashboard attempted to fake a status update")
+                return
 
-        elif action_type == WSActions.STOP_ALL:
-            await self.sessions.broadcast(payload)
-
-
-        elif action_type == WSActions.STOP_ONE:
             try:
-                body = WSActionTarget.model_validate(payload.body)
+                status_update = WSActionTarget.model_validate(payload.body)
             except ValidationError:
-                await send_error(ws, WSErrors.SESSION_NOT_FOUND)
+                await send_error(ws, WSErrors.INVALID_BODY)
                 return
 
-            if body.session_id:
-                await self.sessions.send_to_one(body.session_id, payload)
-            else:
-                await send_error(ws, WSErrors.SESSION_NOT_FOUND)
+            if status_update.session_id != from_session_id:
+                print(f"[warn] Spoofing attempt: {from_session_id} tried to report for {status_update.session_id}")
+                return
+
+            await self.dashboard.notify(payload)
+        else:
+            await send_error(ws, WSErrors.INVALID_ACTION)
                 
         
 
-    
     async def handle_disconnect(self, ws: WebSocket):
         if ws == self.dashboard.ws():
             await self.dashboard.drop(ws)

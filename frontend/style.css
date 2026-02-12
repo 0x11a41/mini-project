@@ -95,7 +95,14 @@ body {
   background-position: center;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.37 8.91L19.37 10.64L7.24 3.64L8.24 1.91L11.28 3.66L12.64 3.29L16.97 5.79L17.34 7.16L20.37 8.91ZM6 19V7H11.07L18 11V19C18 19.5305 17.7893 20.0392 17.4142 20.4142C17.0391 20.7893 16.5304 21 16 21H8C7.46957 21 6.96086 20.7893 6.58579 20.4142C6.21071 20.0392 6 19.5305 6 19Z' fill='%237C1212'/%3E%3C/svg%3E");
   background-size: 26px;
-  background-position: calc(50% + 1px) center;
+}
+
+.tick-icon {
+  background-color: var(--accent);
+  background-repeat: no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 19.414l-6.707-6.707 1.414-1.414L9 16.586 20.293 5.293l1.414 1.414z' fill='white'/%3E%3C/svg%3E");
+  background-size: 26px;
+  background-position: center;
 }
 
 
@@ -124,16 +131,36 @@ body {
   opacity: 0.15;
 }
 
+input[type="text"] {
+  border: 0;
+  border-bottom: 3px solid var(--border);
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border-radius: 4px 4px 0 0;
+  padding: 0.75rem 0.8rem;
+  font-size: 0.95rem;
+  outline: none;
+  transition: background-color 0.2s, border-color 0.2s;
+  width: 16ch;
+  max-width: 400px;
+}
+
+input[type="text"]:focus {
+  border-bottom: 3px solid var(--accent);
+  color: var(--text-main);
+}
+
 button {
   padding: 0.7rem 1.2rem;
   border: 0;
   border-radius: 8px;
   font-size: 1rem;
   background-color: var(--border);
-  margin: 4px;
+  margin: 0 4px;
   font-weight: 700;
   color: var(--text-main);
   cursor: pointer;
+  height: fit-content;
 }
 
 .btn-circle {
@@ -180,6 +207,10 @@ hr {
   color: var(--success);
 }
 
+.danger {
+  color: var(--danger);
+}
+
 .muted {
   color: var(--text-muted);
 }
@@ -209,8 +240,9 @@ hr {
 
 
 
-
+/* ============================================ */
 /* =============== side-panel ================= */
+/* ============================================ */
 aside {
   flex: 0 0 320px;
   display: flex;
@@ -373,8 +405,23 @@ aside .active:hover {
   margin: 0;
 }
 
+@keyframes pulse-border {
+  0% {
+    border-color: var(--danger);
+  }
+
+  50% {
+    border-color: var(--border);
+  }
+
+  100% {
+    border-color: var(--danger);
+  }
+}
+
 .session-card.border-recording {
   border-color: var(--danger);
+  animation: pulse-border 3s infinite ease-in-out;
 }
 
 .session-card .record-button svg {
@@ -493,10 +540,6 @@ aside .active:hover {
 
 /* =============== transcription ============== */
 .transcript-wrapper {
-  /* position: absolute; */
-  /* right: 2rem; */
-  /* top: 50%; */
-  /* transform: translateY(-50%); */
   max-height: 60ch;
   height: fit-content;
   min-width: 20ch;
@@ -540,13 +583,15 @@ aside .active:hover {
 /* ================================================= */
 /* ================= Settings View ================= */
 /* ================================================= */
-.settings-view {}
+.settings-view {
+  overflow: hidden;
+}
 
 .options-wrapper {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 1rem;
+  overflow-y: auto;
 }
 
 .setting-card {
@@ -576,7 +621,6 @@ aside .active:hover {
   line-height: 1.4;
 }
 
-/* Fix for the Change button margin */
 .setting-card button {
   margin: 0;
   padding: 0.7rem 1.5rem;
@@ -604,8 +648,7 @@ aside .active:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
-  /* Default inactive color */
+  background-color: var(--bg-hover);
   transition: .4s;
 }
 
@@ -621,7 +664,6 @@ aside .active:hover {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Checked State (Active) */
 input:checked+.slider {
   background-color: var(--accent);
 }
@@ -630,7 +672,6 @@ input:checked+.slider:before {
   transform: translateX(24px);
 }
 
-/* Rounded sliders */
 .slider.round {
   border-radius: 34px;
 }
@@ -639,7 +680,8 @@ input:checked+.slider:before {
   border-radius: 50%;
 }
 
-/* Dark theme support for the toggle background */
-body.dark-theme .slider {
-  background-color: #555;
+.setting-card .input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

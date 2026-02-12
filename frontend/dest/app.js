@@ -1,72 +1,6 @@
-const VERSION = "v0.5-alpha";
-var RESTEvents;
-(function (RESTEvents) {
-    RESTEvents["SESSION_STAGE"] = "session_stage";
-    RESTEvents["SESSION_STAGED"] = "session_staged";
-})(RESTEvents || (RESTEvents = {}));
-var WSKind;
-(function (WSKind) {
-    WSKind["ACTION"] = "action";
-    WSKind["EVENT"] = "event";
-    WSKind["ERROR"] = "error";
-})(WSKind || (WSKind = {}));
-var WSErrors;
-(function (WSErrors) {
-    WSErrors["INVALID_KIND"] = "invalid_kind";
-    WSErrors["INVALID_EVENT"] = "invalid_event";
-    WSErrors["INVALID_BODY"] = "invalid_body";
-    WSErrors["ACTION_NOT_ALLOWED"] = "action_not_allowed";
-    WSErrors["SESSION_NOT_FOUND"] = "session_not_found";
-})(WSErrors || (WSErrors = {}));
-var WSEvents;
-(function (WSEvents) {
-    WSEvents["DASHBOARD_INIT"] = "dashboard_init";
-    WSEvents["DASHBOARD_RENAME"] = "dashboard_rename";
-    WSEvents["SESSION_RENAME"] = "session_rename";
-    WSEvents["SESSION_ACTIVATE"] = "session_activate";
-    WSEvents["SESSION_ACTIVATED"] = "session_activated";
-    WSEvents["SESSION_LEFT"] = "session_left";
-    WSEvents["SESSION_SELF_START"] = "session_self_start";
-    WSEvents["SESSION_SELF_STOP"] = "session_self_stop";
-    WSEvents["SUCCESS"] = "success";
-    WSEvents["FAIL"] = "failed";
-})(WSEvents || (WSEvents = {}));
-var WSActions;
-(function (WSActions) {
-    WSActions["START_ALL"] = "start_all";
-    WSActions["STOP_ALL"] = "stop_all";
-    WSActions["START_ONE"] = "start_one";
-    WSActions["STOP_ONE"] = "stop_one";
-})(WSActions || (WSActions = {}));
-var ViewStates;
-(function (ViewStates) {
-    ViewStates["DASHBOARD"] = "dashboard";
-    ViewStates["RECORDINGS"] = "recordings";
-    ViewStates["SETTINGS"] = "settings";
-})(ViewStates || (ViewStates = {}));
-class View {
-    state;
-    menu = document.createElement('menu');
-    constructor(state) {
-        this.state = state;
-        this.menu.innerHTML = `
-      <li data-key="${ViewStates.DASHBOARD}">Dashboard</li>
-      <li data-key="${ViewStates.RECORDINGS}">Recordings</li>
-      <li data-key="${ViewStates.SETTINGS}">Settings</li>
-    `;
-    }
-    set(newView) {
-        this.state = newView;
-    }
-    ;
-    get() {
-        return this.state;
-    }
-}
+import { View, Payloads, ViewStates, WSEvents, WSActions, VERSION, URL, ws, buttonComp, } from './interfaces.js';
 class VLApp {
-    URL = "http://localhost:6210";
-    ws;
-    server;
+    serverInfo;
     sessions = new Map();
     view;
     canvas = document.getElementById("app");
@@ -102,11 +36,11 @@ class VLApp {
         }
     }
     renderSidebar() {
-        const ip = this.server?.ip || "X.X.X.X";
+        const ip = this.serverInfo?.ip || "X.X.X.X";
         this.sidePanel.innerHTML = `
       <h2>VocalLink</h2>
       <div class="qrcode-wrapper">
-          <img src="${this.URL}/dashboard/qr" alt="Server QR Code">
+          <img src="${URL}/dashboard/qr" alt="Server QR Code">
           <div class="label">scan to join session</div>
           <div class="ip-address">${ip}</div> 
       </div>
@@ -125,39 +59,41 @@ class VLApp {
         this.setActiveMenuItem();
     }
     renderDashboardView() {
-        this.mainPanel.innerHTML = `
-  			<section class="dashboard-view stack">
-				<div class="view-header">
+        const serverName = this.serverInfo?.name || "Undefined";
+        const server = this.serverInfo;
+        const sessions = this.sessions;
+        function viewHeaderComp() {
+            const header = document.createElement('div');
+            header.classList.add("view-header");
+            header.insertAdjacentHTML('beforeend', `
 					<div class="head">
-						<h1>Server101</h1>
-						<p class="status">status: <span class="success">Active</span></p>
+						<h1>${serverName}</h1>
+						<p class="status">status: <span class="${server ? "success" : "danger"}">${server ? "Active" : "Offline"}</span></p>
 					</div>
-					<div class="file-batch-buttons">
-						<button class="accent highlight-on-cursor">Start All</button>
-					</div>
-				</div>
-				<b class="muted">Connected devices (0)</b>
-				<hr>
-				<section class="sessions-wrapper">
-					<div class="session-card">
-						<div class="left">
-							<div>
-								<b>Hari</b>
-								<div class="device-name">Moto g84 5G</div>
-							</div>
-							<div class="status-row">
-								<span>🔋 64%</span>
-								<span>📶 4ms</span>
-							</div>
-						</div>
-						<div class="right">
-							<p class="timer">00:00:00</p>
-							<div class="btn-circle record-icon highlight-on-cursor"></div>
-						</div>
-					</div>
-				</section>
-			</section>
-    `;
+        `);
+            if (sessions.size > 0) {
+                header.appendChild(buttonComp({ label: "Start All", classes: ["accent"], onClick: () => {
+                        const msg = Payloads.action(WSActions.START, "all");
+                        console.log(msg);
+                        ws.send(JSON.stringify(msg));
+                    } }));
+            }
+            return header;
+        }
+        function sessionsWrapperComp() {
+            const wrapper = document.createElement('section');
+            wrapper.classList.add('sessions-wrapper');
+            return wrapper;
+        }
+        const dashboardView = document.createElement('section');
+        dashboardView.classList.add("dashboard-view", "stack");
+        dashboardView.appendChild(viewHeaderComp());
+        dashboardView.insertAdjacentHTML('beforeend', `
+			<b class="muted">Connected devices (${sessions.size})</b>
+      `);
+        dashboardView.insertAdjacentHTML('beforeend', '<hr>');
+        dashboardView.appendChild(sessionsWrapperComp());
+        this.mainPanel.replaceChildren(dashboardView);
     }
     renderRecordingsView() {
         this.mainPanel.innerHTML = `
@@ -217,6 +153,17 @@ class VLApp {
 				<h1>Settings</h1>
 				<hr>
 				<div class="options-wrapper">
+  				<div class="setting-card">
+              <div class="text-group">
+                  <b>Server Name</b>
+                  <p class="muted">Visible on recorders</p>
+              </div>
+    
+              <div class="input-group">
+                  <input type="text" value="My-Mac-Mini" placeholder="Enter name">
+                  <div class="btn-circle tick-icon highlight-on-cursor"></div>
+              </div>
+          </div>
 					<div class="setting-card">
 						<div class="text-group">
 							<b>Save location</b>
@@ -263,20 +210,24 @@ class VLApp {
     }
     async init() {
         try {
-            const res = await fetch(this.URL + "/dashboard");
-            if (!res.ok)
-                return false;
-            this.server = await res.json();
+            const res = await fetch(URL + "/dashboard");
+            if (!res.ok) {
+                console.error("failed to fetch dashboard information");
+                return;
+            }
+            this.serverInfo = await res.json();
             this.renderSidebar();
             this.syncView();
-            return true;
+            ws.onopen = () => ws.send(JSON.stringify(Payloads.event(WSEvents.DASHBOARD_INIT, null)));
+            ws.onmessage = (ev) => this.handleWsMessages(ev.data);
         }
         catch (err) {
             console.error("Init failed:", err);
-            return false;
         }
+    }
+    handleWsMessages(payload) {
+        console.log(payload);
     }
 }
 const app = new VLApp();
 await app.init();
-export {};
