@@ -84,7 +84,7 @@ export class Session {
     constructor(meta) {
         this.meta = meta;
         this.timerDisplay = createTimerDisplayComp();
-        this.micBtn = createRoundBtn({ iconName: "record-icon", onClick: () => {
+        this.micBtn = roundBtn({ iconName: "record-icon", onClick: () => {
                 if (this.state === SessionState.IDLE) {
                     this.notify(WSActions.START);
                 }
@@ -161,41 +161,22 @@ export class Session {
         this.timerDisplay.innerText = `${mins}:${secs}`;
     }
 }
-export var ViewStates;
-(function (ViewStates) {
-    ViewStates["DASHBOARD"] = "dashboard";
-    ViewStates["RECORDINGS"] = "recordings";
-    ViewStates["SETTINGS"] = "settings";
-})(ViewStates || (ViewStates = {}));
-export class View {
-    state;
-    menu = document.createElement('menu');
-    constructor(state) {
-        this.state = state;
-        this.menu.innerHTML = `
-      <li data-key="${ViewStates.DASHBOARD}">Dashboard</li>
-      <li data-key="${ViewStates.RECORDINGS}">Recordings</li>
-      <li data-key="${ViewStates.SETTINGS}">Settings</li>
-    `;
-    }
-    set(newView) {
-        this.state = newView;
-    }
-    ;
-    get() {
-        return this.state;
-    }
-}
-function createRoundBtn({ iconName, onClick }) {
+function roundBtn({ iconName, onClick }) {
     const micBtn = document.createElement('div');
     micBtn.classList.add('btn-circle', iconName, 'highlight-on-cursor');
     micBtn.onclick = onClick;
     return micBtn;
 }
-export function buttonComp({ label, classes = [], onClick }) {
+export function button({ label, classes = [], onClick }) {
     const btn = document.createElement('button');
     btn.innerText = label;
     btn.classList.add('highlight-on-cursor', ...classes);
     btn.onclick = () => onClick();
     return btn;
 }
+export var Views;
+(function (Views) {
+    Views["DASHBOARD"] = "dashboard";
+    Views["RECORDINGS"] = "recordings";
+    Views["SETTINGS"] = "settings";
+})(Views || (Views = {}));

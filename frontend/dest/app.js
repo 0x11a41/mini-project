@@ -1,36 +1,71 @@
-import { Session, View, Payloads, ViewStates, WSEvents, WSActions, SessionState, VERSION, URL, ws, buttonComp, WSKind, } from './interfaces.js';
+import { Session, Payloads, Views, WSEvents, WSActions, SessionState, WSKind, VERSION, URL, ws, button, } from './interfaces.js';
 class VLApp {
     serverInfo;
     sessions = new Map();
-    view;
     canvas = document.getElementById("app");
     sidePanel = document.createElement('aside');
     mainPanel = document.createElement('main');
+    currentView = Views.DASHBOARD;
+    viewSelector = document.createElement('menu');
+    activeRecordings = 0;
+    masterToggleBtn;
     constructor() {
-        this.view = new View(ViewStates.DASHBOARD);
+        this.viewSelector.innerHTML = `
+      <li data-key="${Views.DASHBOARD}">Dashboard</li>
+      <li data-key="${Views.RECORDINGS}">Recordings</li>
+      <li data-key="${Views.SETTINGS}">Settings</li>
+    `;
         if (this.canvas) {
             this.canvas.insertAdjacentElement('afterbegin', this.sidePanel);
             this.canvas.insertAdjacentElement('beforeend', this.mainPanel);
         }
+        this.masterToggleBtn = button({ label: "Start All", classes: ["accent"], onClick: () => {
+                if (this.activeRecordings == 0) {
+                    this.startMaster();
+                }
+                else {
+                    this.stopMaster();
+                }
+            } });
     }
-    setActiveMenuItem(state = this.view.get()) {
-        const options = this.view.menu.querySelectorAll('li');
+    startMaster() {
+        this.masterToggleBtn.classList.replace("accent", "immutable");
+        this.masterToggleBtn.innerText = "Stop All";
+        this.sessions.forEach((session) => {
+            if (session.state == SessionState.IDLE) {
+                const msg = Payloads.action(WSActions.START, session.meta.id);
+                ws.send(JSON.stringify(msg));
+            }
+        });
+    }
+    stopMaster() {
+        this.masterToggleBtn.classList.replace("immutable", "accent");
+        this.masterToggleBtn.innerText = "Start All";
+        this.sessions.forEach((session) => {
+            if (session.state == SessionState.RECORDING) {
+                const msg = Payloads.action(WSActions.STOP, session.meta.id);
+                ws.send(JSON.stringify(msg));
+            }
+        });
+    }
+    setActiveMenuItem(state = this.currentView) {
+        const options = this.viewSelector.querySelectorAll('li');
         options.forEach(option => {
             option.classList.toggle('active', option.dataset.key === state);
         });
     }
     syncView(newView) {
-        this.view.set(newView);
+        this.currentView = newView;
         this.setActiveMenuItem();
         this.mainPanel.innerHTML = "";
         switch (newView) {
-            case ViewStates.DASHBOARD:
+            case Views.DASHBOARD:
                 this.renderDashboardView();
                 break;
-            case ViewStates.RECORDINGS:
+            case Views.RECORDINGS:
                 this.renderRecordingsView();
                 break;
-            case ViewStates.SETTINGS:
+            case Views.SETTINGS:
                 this.renderSettingsView();
                 break;
         }
@@ -45,20 +80,20 @@ class VLApp {
           <div class="ip-address">${ip}</div> 
       </div>
     `;
-        this.sidePanel.insertAdjacentElement('beforeend', this.view.menu);
+        this.sidePanel.appendChild(this.viewSelector);
         this.sidePanel.insertAdjacentHTML('beforeend', `<i class="version">vocal-link-dashboard ${VERSION}</i>`);
-        this.view.menu.onmouseup = (ev) => {
+        this.viewSelector.onmouseup = (ev) => {
             const target = ev.target.closest('li');
             if (target) {
                 const state = target.dataset.key;
-                if (state !== this.view.get()) {
+                if (state !== this.currentView) {
                     this.syncView(state);
                 }
             }
         };
         this.setActiveMenuItem();
     }
-    viewHeaderComp() {
+    dashboardHeader() {
         const header = document.createElement('div');
         header.classList.add("view-header");
         header.insertAdjacentHTML('beforeend', `
@@ -68,18 +103,11 @@ class VLApp {
 				</div>
       `);
         if (this.sessions.size > 0) {
-            header.appendChild(buttonComp({ label: "Start All", classes: ["accent"], onClick: () => {
-                    this.sessions.forEach((session) => {
-                        if (session.state == SessionState.IDLE) {
-                            const msg = Payloads.action(WSActions.START, session.meta.id);
-                            ws.send(JSON.stringify(msg));
-                        }
-                    });
-                } }));
+            header.appendChild(this.masterToggleBtn);
         }
         return header;
     }
-    sessionsWrapperComp() {
+    sessionsWrapper() {
         const wrapper = document.createElement('section');
         wrapper.classList.add('sessions-wrapper');
         if (this.sessions.size > 0) {
@@ -103,12 +131,12 @@ class VLApp {
     renderDashboardView() {
         const dashboardView = document.createElement('section');
         dashboardView.classList.add("dashboard-view", "stack");
-        dashboardView.appendChild(this.viewHeaderComp());
+        dashboardView.appendChild(this.dashboardHeader());
         dashboardView.insertAdjacentHTML('beforeend', `
 			<b class="muted">Connected devices (${this.sessions.size})</b>
       `);
         dashboardView.insertAdjacentHTML('beforeend', '<hr>');
-        dashboardView.appendChild(this.sessionsWrapperComp());
+        dashboardView.appendChild(this.sessionsWrapper());
         this.mainPanel.replaceChildren(dashboardView);
     }
     renderRecordingsView() {
@@ -238,7 +266,7 @@ class VLApp {
                 this.sessions.set(meta.id, new Session(meta));
             });
             this.renderSidebar();
-            this.syncView(this.view.get());
+            this.syncView(this.currentView);
             ws.onmessage = (ev) => this.handleWsMessages(JSON.parse(ev.data));
         }
         catch (err) {
@@ -257,14 +285,14 @@ class VLApp {
                     if (!this.sessions.has(payload.body.id)) {
                         const s = new Session(payload.body);
                         this.sessions.set(payload.body.id, s);
-                        this.syncView(ViewStates.DASHBOARD);
+                        this.syncView(Views.DASHBOARD);
                     }
                     break;
                 }
                 case WSEvents.SESSION_LEFT: {
                     payload.body = payload.body;
                     this.sessions.delete(payload.body.id);
-                    this.syncView(ViewStates.DASHBOARD);
+                    this.syncView(Views.DASHBOARD);
                     break;
                 }
                 case WSEvents.SESSION_UPDATE: {
@@ -291,6 +319,11 @@ class VLApp {
                     const id = payload.body.session_id;
                     const session = this.sessions.get(id);
                     session?.start();
+                    if (this.activeRecordings == 0) {
+                        this.masterToggleBtn.classList.replace("accent", "immutable");
+                        this.masterToggleBtn.innerText = "Stop All";
+                    }
+                    this.activeRecordings++;
                     break;
                 }
                 case WSActions.STOPPED: {
@@ -298,6 +331,11 @@ class VLApp {
                     const id = payload.body.session_id;
                     const s = this.sessions.get(id);
                     s?.stop();
+                    this.activeRecordings--;
+                    if (this.activeRecordings == 0) {
+                        this.masterToggleBtn.classList.replace("immutable", "accent");
+                        this.masterToggleBtn.innerText = "Start All";
+                    }
                     break;
                 }
                 default:
