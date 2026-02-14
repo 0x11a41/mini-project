@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "rootDir": "./frontend/src",
-    "outDir": "./frontend/dest",
+    "outDir": "./frontend/target",
     "lib": [
       "DOM",
       "ESNext"
@@ -21,6 +21,6 @@
   ],
   "exclude": [
     "node_modules",
-    "frontend/dest/*.js"
+    "frontend/target/*.js"
   ]
 }

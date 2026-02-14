@@ -1,12 +1,20 @@
-import { 
-  Session, ServerInfo, Payloads, Views, WSEvents, WSActions, SessionState, WSKind,
-  WSPayload, SessionMetadata, WSActionTarget, VERSION, URL, ws, button,
-} from './interfaces.js'
+import { VERSION, URL } from './env.js';
+import { ws, sendPayload } from './websockets.js';
+import { ServerInfo, WSKind, WSEvents, WSActions, WSActionTarget, WSPayload, Payloads, SessionMetadata } from './types.js';
+import { SessionCard, SessionState } from './components/SessionCard.js';
+import { button } from './components/button.js';
+
+
+export enum Views {
+  DASHBOARD = "dashboard",
+  RECORDINGS = "recordings",
+  SETTINGS = "settings"
+}
 
 
 class VLApp {
   private serverInfo?: ServerInfo;
-  private sessions = new Map<string, Session>();
+  private sessions = new Map<string, SessionCard>();
 
   public canvas = document.getElementById("app");
   public sidePanel = document.createElement('aside');
@@ -43,8 +51,7 @@ class VLApp {
 		this.masterToggleBtn.innerText = "Stop All";
   	this.sessions.forEach((session) => {
   		if (session.state == SessionState.IDLE) {
-        const msg = Payloads.action(WSActions.START, session.meta.id);
-        ws.send(JSON.stringify(msg));
+        sendPayload(Payloads.action(WSActions.START, session.meta.id))
   		}
   	});
 	}
@@ -53,8 +60,7 @@ class VLApp {
 		this.masterToggleBtn.innerText = "Start All";
   	this.sessions.forEach((session) => {
   		if (session.state == SessionState.RECORDING) {
-        const msg = Payloads.action(WSActions.STOP, session.meta.id);
-        ws.send(JSON.stringify(msg));
+        sendPayload(Payloads.action(WSActions.STOP, session.meta.id));
   		}
   	});
 	}
@@ -287,7 +293,7 @@ class VLApp {
       const sessionsResponse = await fetch(URL + "/sessions");
 	    const sessions: SessionMetadata[] = await sessionsResponse.json();
 	    sessions.forEach(meta => {
-	        this.sessions.set(meta.id, new Session(meta));
+	        this.sessions.set(meta.id, new SessionCard(meta));
 	    });
 
       this.renderSidebar(); 
@@ -310,7 +316,7 @@ class VLApp {
 	      case WSEvents.SESSION_ACTIVATED: {
 	        payload.body = payload.body as SessionMetadata;
 	        if (!this.sessions.has(payload.body.id)) {
-	          const s = new Session(payload.body);
+	          const s = new SessionCard(payload.body);
 	          this.sessions.set(payload.body.id, s);
 	          this.syncView(Views.DASHBOARD);
 	        }

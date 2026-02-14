@@ -52,8 +52,7 @@ class VLApp {
         this.masterToggleBtn.innerText = "Start All";
         this.sessions.forEach((session) => {
             if (session.state == SessionState.RECORDING) {
-                const msg = Payloads.action(WSActions.STOP, session.meta.id);
-                ws.send(JSON.stringify(msg));
+                sendPayload(Payloads.action(WSActions.STOP, session.meta.id));
             }
         });
     }

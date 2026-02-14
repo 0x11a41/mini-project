@@ -90,10 +90,10 @@ body {
 }
 
 .trash-icon {
-  background-color: #F49999;
+  background-color: var(--danger);
   background-repeat: no-repeat;
   background-position: center;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.37 8.91L19.37 10.64L7.24 3.64L8.24 1.91L11.28 3.66L12.64 3.29L16.97 5.79L17.34 7.16L20.37 8.91ZM6 19V7H11.07L18 11V19C18 19.5305 17.7893 20.0392 17.4142 20.4142C17.0391 20.7893 16.5304 21 16 21H8C7.46957 21 6.96086 20.7893 6.58579 20.4142C6.21071 20.0392 6 19.5305 6 19Z' fill='%237C1212'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.37 8.91L19.37 10.64L7.24 3.64L8.24 1.91L11.28 3.66L12.64 3.29L16.97 5.79L17.34 7.16L20.37 8.91ZM6 19V7H11.07L18 11V19C18 19.5305 17.7893 20.0392 17.4142 20.4142C17.0391 20.7893 16.5304 21 16 21H8C7.46957 21 6.96086 20.7893 6.58579 20.4142C6.21071 20.0392 6 19.5305 6 19Z' fill='white'/%3E%3C/svg%3E");
   background-size: 26px;
 }
 
@@ -180,8 +180,8 @@ button {
 }
 
 .immutable {
-  background-color: #F49999;
-  color: #7C1212;
+  background-color: var(--danger);
+  color: white;
 }
 
 hr {
